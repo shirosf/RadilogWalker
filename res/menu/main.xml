@@ -1,17 +1,30 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android" >
 
-        <item
-	android:id="@+id/action_settings"
+    	<item
+	android:id="@+id/mestime_settings"
         android:orderInCategory="100"
         android:showAsAction="never"
-        android:title="@string/action_settings">
+        android:title="@string/mestime_settings">
         <menu>
-		<group android:checkableBehavior="single">
+	    <group android:id="@+id/mestime" android:checkableBehavior="single">
       		<item android:id="@+id/mestime_30s" android:visible="true" android:title="@string/mes_30s" android:checked="true" android:enabled="true" android:checkable="true" android:titleCondensed="30sec"/>
         	<item android:id="@+id/mestime_10s" android:title="@string/mes_10s" android:titleCondensed="10sec" android:visible="true" android:checked="false" android:enabled="true" android:checkable="true"/>
         	<item android:id="@+id/mestime_03s" android:title="@string/mes_03s" android:titleCondensed="10sec" android:visible="true" android:checked="false" android:enabled="true" android:checkable="true"/>
-        	</group>
+            </group>
         </menu>
-    </item>
-
+    	</item>
+    	
+    	<item
+	android:id="@+id/rectime_settings"
+        android:orderInCategory="100"
+        android:showAsAction="never"
+        android:title="@string/rectime_settings">
+        <menu>            
+            <group android:id="@+id/rectime" android:checkableBehavior="single">
+                <item android:id="@+id/rectime_manual" android:visible="true" android:title="@string/rectime_manual" android:checked="true" android:enabled="true" android:checkable="true"/>
+            	<item android:id="@+id/rectime_auto" android:visible="true" android:title="@string/rectime_auto" android:checked="false" android:enabled="true" android:checkable="true"/>
+            </group>
+        </menu>
+    	</item>
+    	
 </menu>

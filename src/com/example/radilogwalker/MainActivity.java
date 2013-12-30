@@ -7,14 +7,18 @@ import android.os.Message;
 import android.util.Log;
 import android.app.Activity;
 import android.app.PendingIntent;
+import android.app.Dialog;
+import android.widget.Button;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.Window;
 import android.content.Context;
 import android.content.Intent;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbManager;
 import android.widget.TextView;
+import android.widget.EditText;
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
 import com.hoho.android.usbserial.driver.UsbId;
@@ -29,7 +33,7 @@ public class MainActivity extends Activity
     private TextView mDataValueMessage;
     private UsbDevice mDevice=null;
     private UsbSerialDriver mDriver=null;
-    private int mCount=0;
+    private int mRectime=0;
     private Context mContext;
 
     private static final int MESSAGE_REFRESH = 101;
@@ -184,6 +188,14 @@ public class MainActivity extends Activity
 	    mMenu.findItem(R.id.mestime_30s).setChecked(false);
 	    mMenu.findItem(R.id.mestime_10s).setChecked(false);
 	    break;
+        case R.id.rectime_auto:
+	    mMenu.findItem(R.id.rectime_manual).setChecked(false);
+	    setupRecordTimeDialog(this);
+	    break;
+        case R.id.rectime_manual:
+	    mMenu.findItem(R.id.rectime_auto).setChecked(false);
+	    mRectime=0;
+	    break;
 	}
 	item.setChecked(true);
 	if(mMesTime!=mestime){
@@ -197,6 +209,35 @@ public class MainActivity extends Activity
 	return true;
     }
 
+
+    private void setupRecordTimeDialog(Context context)
+    {
+	final Dialog dialog = new Dialog(context);
+	dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+	dialog.setContentView(R.layout.rectime_setup);
+	Button dlOkButton = (Button) dialog.findViewById(R.id.rectime_ok);
+	Button dlCancelButton = (Button) dialog.findViewById(R.id.rectime_cancel);
+	// if button is clicked, close the custom dialog
+	dlOkButton.setOnClickListener(new View.OnClickListener() {
+		@Override
+		public void onClick(View v) {
+		    TextView hours = (TextView) findViewById(R.id.rec_hours);
+		    TextView minutes = (TextView) findViewById(R.id.rec_minutes);
+		    String hs = hours.getText().toString();
+		    String ms = minutes.getText().toString();
+		    mRectime=60*Integer.parseInt(hs)+Integer.parseInt(ms);
+		    Log.d(TAG, String.format("setupRecordTimeDialog mRectime=%d\n",mRectime));
+		    dialog.dismiss();
+		}
+	    });
+	dlCancelButton.setOnClickListener(new View.OnClickListener() {
+		@Override
+		public void onClick(View v) {
+		    dialog.dismiss();
+		}
+	    });
+	dialog.show();
+    }
 
     private final byte STX=0x02;
     private final byte ETX=0x03;

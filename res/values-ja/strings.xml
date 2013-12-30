@@ -2,12 +2,21 @@
 <resources>
 
     <string name="app_name">RadilogWalker</string>
-    <string name="action_settings">測定時間設定</string>
+    <string name="mestime_settings">測定時間設定</string>
+    <string name="rectime_settings">記録時間設定</string>
     <string name="status_message">測定機の接続待ち</string>
     <string name="data_label">測定値(uSv/h)</string>
     <string name="data_save">測定値記録</string>
     <string name="mes_30s">測定時間30秒</string>
     <string name="mes_10s">測定時間10秒</string>
     <string name="mes_03s">測定時間3秒</string>
+    <string name="rectime_manual">手動記録</string>
+    <string name="rectime_auto">自動記録</string>
+    <string name="rectime_setup">自動記録時間</string>
+    <string name="unit_hours">時間</string>
+    <string name="unit_minutes">分</string>
+    <string name="interval_minutes">記録間隔(分)</string>
+    <string name="label_ok">実行</string>
+    <string name="label_cancel">中止</string>
     
 </resources>

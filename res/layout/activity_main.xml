@@ -2,11 +2,11 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/Black"
     android:paddingBottom="@dimen/activity_vertical_margin"
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
-    android:background="#000000"
     tools:context=".MainActivity" >
 
     <TextView
@@ -16,7 +16,7 @@
         android:layout_alignParentLeft="true"
         android:layout_alignParentTop="true"
         android:text="@string/status_message"
-        android:textColor="#ffffff"
+        android:textColor="@color/White"
         android:textSize="12pt" />
 
     <TextView
@@ -26,10 +26,10 @@
         android:layout_alignLeft="@+id/status_message"
         android:layout_below="@+id/status_message"
         android:layout_marginTop="31dp"
+        android:ems="10"
         android:text="@string/data_label"
-        android:textColor="#ffffff"
-        android:textSize="10pt"
-        android:ems="10" />
+        android:textColor="@color/White"
+        android:textSize="10pt" />
 
     <TextView
         android:id="@+id/data_value"
@@ -38,9 +38,9 @@
         android:layout_alignLeft="@+id/data_label"
         android:layout_alignParentRight="true"
         android:layout_below="@+id/data_label"
-        android:textColor="#ff4000"
-        android:textSize="28pt"
-        android:ems="5" />
+        android:ems="5"
+        android:textColor="@color/OrangeRed"
+        android:textSize="28pt" />
 
     <Button
         android:id="@+id/save_data"
@@ -49,7 +49,8 @@
         android:layout_alignLeft="@+id/data_value"
         android:layout_alignParentRight="true"
         android:layout_below="@+id/data_value"
+        android:background="@color/DarkGray"
         android:text="@string/data_save"
-        android:textColor="#ffffff" />
+        android:textColor="@color/White" />
 
 </RelativeLayout>

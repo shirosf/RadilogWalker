@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/RectimeLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/DarkGray"
+    android:orientation="vertical" >
+
+    <TextView
+        android:id="@+id/rectime_setup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentTop="true"
+        android:ems="10"
+        android:text="@string/rectime_setup"
+        android:textColor="@color/White"
+        android:textSize="10pt" >
+
+    </TextView>
+
+    <EditText
+        android:id="@+id/rec_hours"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/rectime_setup"
+        android:layout_marginTop="21dp"
+        android:ems="2"
+        android:inputType="number"
+        android:textColor="@color/OrangeRed"
+        android:textSize="28pt" />
+
+    <TextView
+        android:id="@+id/TextView1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/TextView01"
+        android:layout_alignTop="@+id/rec_hours"
+        android:layout_toRightOf="@+id/rec_hours"
+        android:ems="10"
+        android:gravity="center_vertical"
+        android:text="@string/unit_hours"
+        android:textColor="@color/White"
+        android:textSize="12pt" >
+
+        <requestFocus />
+    </TextView>
+
+    <EditText
+        android:id="@+id/rec_minutes"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/rec_hours"
+        android:ems="2"
+        android:inputType="number"
+        android:textColor="@color/OrangeRed"
+        android:textSize="28pt" />
+
+    <TextView
+        android:id="@+id/TextView01"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/rec_minutes"
+        android:layout_alignLeft="@+id/TextView1"
+        android:layout_alignParentRight="true"
+        android:layout_alignTop="@+id/rec_minutes"
+        android:ems="10"
+        android:gravity="center_vertical"
+        android:text="@string/unit_minutes"
+        android:textColor="@color/White"
+        android:textSize="12pt" />
+
+    <Button
+        android:id="@+id/rectime_cancel"
+        android:layout_width="120dp"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/rectime_ok"
+        android:layout_alignBottom="@+id/rectime_ok"
+        android:layout_alignParentRight="true"
+        android:background="@color/Gray"
+        android:text="@string/label_cancel" />
+
+    <Button
+        android:id="@+id/rectime_ok"
+        android:layout_width="120dp"
+        android:layout_height="wrap_content"
+        android:layout_alignRight="@+id/rec_minutes"
+        android:layout_below="@+id/rec_minutes"
+        android:layout_marginTop="30dp"
+        android:background="@color/Gray"
+        android:text="@string/label_ok" />
+
+</RelativeLayout>
