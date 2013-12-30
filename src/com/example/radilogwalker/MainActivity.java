@@ -25,6 +25,7 @@ import com.hoho.android.usbserial.driver.UsbId;
 import java.util.Arrays;
 import java.util.List;
 import java.io.IOException;
+import java.lang.Exception;
 
 public class MainActivity extends Activity
 {
@@ -33,7 +34,8 @@ public class MainActivity extends Activity
     private TextView mDataValueMessage;
     private UsbDevice mDevice=null;
     private UsbSerialDriver mDriver=null;
-    private int mRectime=0;
+    private int mRectime=5;
+    private boolean mAutoRecord=false;
     private Context mContext;
 
     private static final int MESSAGE_REFRESH = 101;
@@ -190,11 +192,12 @@ public class MainActivity extends Activity
 	    break;
         case R.id.rectime_auto:
 	    mMenu.findItem(R.id.rectime_manual).setChecked(false);
+	    mAutoRecord=true;
 	    setupRecordTimeDialog(this);
 	    break;
         case R.id.rectime_manual:
 	    mMenu.findItem(R.id.rectime_auto).setChecked(false);
-	    mRectime=0;
+	    mAutoRecord=false;
 	    break;
 	}
 	item.setChecked(true);
@@ -217,15 +220,27 @@ public class MainActivity extends Activity
 	dialog.setContentView(R.layout.rectime_setup);
 	Button dlOkButton = (Button) dialog.findViewById(R.id.rectime_ok);
 	Button dlCancelButton = (Button) dialog.findViewById(R.id.rectime_cancel);
+	final EditText hours = (EditText) dialog.findViewById(R.id.rec_hours);
+	final EditText minutes = (EditText) dialog.findViewById(R.id.rec_minutes);
+	hours.setText(String.format("%d",mRectime/60));
+	minutes.setText(String.format("%d",mRectime%60));
 	// if button is clicked, close the custom dialog
 	dlOkButton.setOnClickListener(new View.OnClickListener() {
 		@Override
 		public void onClick(View v) {
-		    TextView hours = (TextView) findViewById(R.id.rec_hours);
-		    TextView minutes = (TextView) findViewById(R.id.rec_minutes);
-		    String hs = hours.getText().toString();
-		    String ms = minutes.getText().toString();
-		    mRectime=60*Integer.parseInt(hs)+Integer.parseInt(ms);
+		    int hs;
+		    int ms;
+		    try {
+			hs = Integer.parseInt(hours.getText().toString());
+		    } catch(Exception e) {
+			hs = 0;
+		    }
+		    try {
+			ms = Integer.parseInt(minutes.getText().toString());
+		    } catch(Exception e) {
+			ms = 0;
+		    }
+		    mRectime=60*hs+ms;
 		    Log.d(TAG, String.format("setupRecordTimeDialog mRectime=%d\n",mRectime));
 		    dialog.dismiss();
 		}
