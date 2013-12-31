@@ -197,8 +197,13 @@ public final class R {
     }
     public static final class string {
         public static final int app_name=0x7f070000;
+        public static final int csv_tags=0x7f070013;
+        public static final int data_directory=0x7f070015;
         public static final int data_label=0x7f070004;
         public static final int data_save=0x7f070005;
+        public static final int datetime_format=0x7f070014;
+        public static final int default_recordfile=0x7f070012;
+        public static final int dev_connected=0x7f070011;
         public static final int interval_minutes=0x7f07000e;
         public static final int label_cancel=0x7f070010;
         public static final int label_ok=0x7f07000f;

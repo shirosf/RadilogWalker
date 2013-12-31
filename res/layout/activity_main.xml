@@ -50,6 +50,7 @@
         android:layout_alignParentRight="true"
         android:layout_below="@+id/data_value"
         android:background="@color/DarkGray"
+        android:onClick="saveData"
         android:text="@string/data_save"
         android:textColor="@color/White" />
 

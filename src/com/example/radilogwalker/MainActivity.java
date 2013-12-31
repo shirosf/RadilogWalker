@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.os.SystemClock;
 import android.os.Handler;
 import android.os.Message;
+import android.os.Environment;
 import android.util.Log;
 import android.app.Activity;
 import android.app.PendingIntent;
@@ -19,13 +20,20 @@ import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbManager;
 import android.widget.TextView;
 import android.widget.EditText;
+import android.location.LocationManager;
+import android.location.LocationListener;
+import android.location.Location;
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
 import com.hoho.android.usbserial.driver.UsbId;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Date;
 import java.io.IOException;
+import java.io.File;
+import java.io.FileWriter;
 import java.lang.Exception;
+import java.text.SimpleDateFormat;
 
 public class MainActivity extends Activity
 {
@@ -34,7 +42,7 @@ public class MainActivity extends Activity
     private TextView mDataValueMessage;
     private UsbDevice mDevice=null;
     private UsbSerialDriver mDriver=null;
-    private int mRectime=5;
+    private int mRectime=5; // minutes
     private boolean mAutoRecord=false;
     private Context mContext;
 
@@ -46,19 +54,29 @@ public class MainActivity extends Activity
     private MeasurementTime mMesTime = MeasurementTime.MES30S;
     private Menu mMenu;
     private boolean mDeviceInitialized = false;
+    private LocationListener mLocationListener;
+    private LocationManager mLocationManager;
+    private boolean mLocationListenerUpdated=false;
+    private double mDoseRate;
+    private double mCurrentLongitude;
+    private double mCurrentLatitude;
+    private Date mGpsCaptureDate;
+    private Date mDoseRateCaptureDate;
+    private String mDataFileName;
+    private FileWriter mRecordFileWriter=null;
 
     // use 3sec read interval for all measurement time
     private int getReadInterval()
     {
 	switch(mMesTime){
 	case MES30S:
-	    return 3000;
+	    return 1000;
 	case MES10S:
-	    return 3000;
+	    return 1000;
 	case MES03S:
-	    return 3000;
+	    return 1000;
 	}
-	return 3000;
+	return 1000;
     }
 	
     private byte[] getMestimeString()
@@ -90,8 +108,14 @@ public class MainActivity extends Activity
 		    }
                 case MESSAGE_READDATA:
 		    Log.d(TAG, "MESSAGE_READDATA");
-		    doserate=readOneData();
-		    mDataValueMessage.setText(String.format("%5.3f",doserate*0.001));
+		    mDoseRate=readOneData()*0.001;
+		    Date cdt=new Date();
+		    long mdiff=cdt.getTime()-mDoseRateCaptureDate.getTime();
+		    mDoseRateCaptureDate=cdt;
+		    if(mAutoRecord){
+			if(mdiff >= mRectime*60*1000) recordOneData();
+		    }
+		    mDataValueMessage.setText(String.format("%5.3f",mDoseRate));
 		    mHandler.sendEmptyMessageDelayed(MESSAGE_READDATA, getReadInterval());
 		    break;
                 default:
@@ -130,13 +154,92 @@ public class MainActivity extends Activity
 	    mDevice=device;
 	    mDriver=drivers.get(0);
 	    if(init_driver() && setDeviceMesTime(mMesTime)){
-		mStatusMessage.setText("接続中");
+		mStatusMessage.setText(getString(R.string.dev_connected));
 		return;
 	    }
 	}
     }
 
-    
+    private void initLocationManager()
+    {
+	mLocationManager =
+	    (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+
+	// Define a listener that responds to location updates
+	mLocationListener = new LocationListener() {
+		public void onLocationChanged(Location location) {
+		    // Called when a new location is found by the network location provider.
+		    mCurrentLatitude=location.getLatitude();
+		    mCurrentLongitude=location.getLongitude();
+		    mGpsCaptureDate=new Date();
+		    Log.d(TAG,String.format("Lat.=%f, Long=%f",
+					    location.getLatitude(),location.getLongitude()));
+		}
+
+		public void onStatusChanged(String provider, int status, Bundle extras) {}
+		public void onProviderEnabled(String provider) {}
+		public void onProviderDisabled(String provider) {}
+	    };
+    }
+
+    /* Checks if external storage is available for read and write */
+    private boolean isExternalStorageWritable()
+    {
+	String state = Environment.getExternalStorageState();
+	if (Environment.MEDIA_MOUNTED.equals(state)) {
+	    return true;
+	}
+	return false;
+    }
+
+    private boolean recordOneData()
+    {
+	if(mRecordFileWriter==null){
+	    if(!isExternalStorageWritable()) return false;
+	    File path = Environment.getExternalStoragePublicDirectory
+		(getString(R.string.data_directory));
+	    File rfile = new File(path, mDataFileName);
+	    if(!rfile.exists()){
+		try {
+		    path.mkdirs();
+		    rfile.createNewFile();
+		    mRecordFileWriter = new FileWriter(rfile);
+		    String str=getString(R.string.csv_tags);
+		    mRecordFileWriter.write(str,0,str.length());
+		    mRecordFileWriter.write('\n');
+		}catch(IOException e){
+		    Log.e(TAG, "file can't be created");
+		    return false;
+		}
+	    }else{
+		try {
+		    mRecordFileWriter=new FileWriter(rfile);
+		}catch(IOException e){
+		    Log.e(TAG, "existing file can't be opened");
+		}
+	    }
+	}
+
+	SimpleDateFormat sdf=new SimpleDateFormat(getString(R.string.datetime_format));
+	try{
+	    mRecordFileWriter.write(String.format("%f,%f,%f,%s,%s\n",
+		    mCurrentLatitude,mCurrentLongitude,
+		    mDoseRate,sdf.format(mGpsCaptureDate),
+		    sdf.format(mDoseRateCaptureDate)));
+	    Log.d(TAG, String.format("%f,%f,%f,%s,%s\n",
+		    mCurrentLatitude,mCurrentLongitude,
+		    mDoseRate,sdf.format(mGpsCaptureDate),
+		    sdf.format(mDoseRateCaptureDate)));
+	    mRecordFileWriter.flush();
+	}catch(IOException e){
+	    Log.e(TAG, "can't write data into the file");
+	    return false;
+	}
+	return true;
+    }
+	    
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
@@ -147,12 +250,25 @@ public class MainActivity extends Activity
 	mStatusMessage = (TextView) findViewById(R.id.status_message);
 	mContext = getApplicationContext();
 	mDataValueMessage = (TextView) findViewById(R.id.data_value);
+
+	mDataFileName=getString(R.string.default_recordfile);
+	mDoseRateCaptureDate=new Date();
+	mGpsCaptureDate=new Date();
+
+	initLocationManager();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         mHandler.sendEmptyMessage(MESSAGE_REFRESH);
+
+	// Register the listener with the Location Manager to receive location updates
+	if(!mLocationListenerUpdated){
+	    mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
+						    3000, 0, mLocationListener);
+	    mLocationListenerUpdated=true;
+	}
     }
 
     @Override
@@ -160,6 +276,12 @@ public class MainActivity extends Activity
         super.onPause();
         mHandler.removeMessages(MESSAGE_REFRESH);
 	mHandler.removeMessages(MESSAGE_READDATA);
+
+	// Remove the listener you previously added
+	if(mLocationListenerUpdated){
+	    mLocationManager.removeUpdates(mLocationListener);
+	    mLocationListenerUpdated=false;
+	}
     }
     
     @Override
@@ -414,5 +536,12 @@ public class MainActivity extends Activity
 	}
 	return 0;
     }
+
+    /** Called when the user clicks the Read button */
+    public void saveData(View view)
+    {
+	recordOneData();
+    }
+
 }
 
