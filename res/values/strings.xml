@@ -4,6 +4,7 @@
     <string name="app_name">RadilogWalker</string>
     <string name="mestime_settings">Measurement Time</string>
     <string name="rectime_settings">Record Time</string>
+    <string name="recfile_settings">Record File</string>
     <string name="status_message">Waiting Connection</string>
     <string name="data_label">Measured Value(uSv/h)</string>
     <string name="data_save">Record the value</string>
@@ -19,10 +20,15 @@
     <string name="label_ok">OK</string>
     <string name="label_cancel">Cancel</string>
     <string name="dev_connected">Connected</string>
+    <string name="dev_updated">Updated</string>
+    <string name="dev_recorded">Recorded</string>
     <string name="default_recordfile">RLWData.csv</string>
     <string name="csv_tags">Latitude,Longitude,DoseRate,GpsDateTime,DoseDateTime</string>
     <string name="datetime_format">yyyy-MM-dd HH:mm:ss</string>
     <string name="data_directory">RadilogWalker</string>
+    <string name="recfile_setup">Record File Setup</string>
+    <string name="file_name">Filename</string>
+    <string name="delete_record">Discard Recorded Data</string>
     
     
 </resources>

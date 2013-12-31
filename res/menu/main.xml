@@ -26,5 +26,12 @@
             </group>
         </menu>
     	</item>
+
+    	<item
+	android:id="@+id/recfile_settings"
+        android:orderInCategory="100"
+        android:showAsAction="never"
+        android:title="@string/recfile_settings">
+    	</item>
     	
 </menu>

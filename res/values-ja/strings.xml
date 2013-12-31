@@ -4,6 +4,7 @@
     <string name="app_name">RadilogWalker</string>
     <string name="mestime_settings">測定時間設定</string>
     <string name="rectime_settings">記録時間設定</string>
+    <string name="recfile_settings">記録ファイル設定</string>
     <string name="status_message">測定機の接続待ち</string>
     <string name="data_label">測定値(uSv/h)</string>
     <string name="data_save">測定値記録</string>
@@ -19,5 +20,10 @@
     <string name="label_ok">実行</string>
     <string name="label_cancel">中止</string>
     <string name="dev_connected">接続中</string>
+    <string name="dev_updated">データ更新</string>
+    <string name="dev_recorded">データ保存</string>
+    <string name="recfile_setup">記録ファイル設定</string>
+    <string name="file_name">ファイル名</string>
+    <string name="delete_record">記録データ削除</string>
     
 </resources>

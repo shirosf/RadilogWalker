@@ -3,7 +3,7 @@
     android:id="@+id/RectimeLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/DarkGray"
+    android:background="@color/DimBlack"
     android:orientation="vertical" >
 
     <TextView
@@ -79,7 +79,7 @@
         android:layout_alignBaseline="@+id/rectime_ok"
         android:layout_alignBottom="@+id/rectime_ok"
         android:layout_alignParentRight="true"
-        android:background="@color/Gray"
+        android:background="@color/DarkGray"
         android:text="@string/label_cancel" />
 
     <Button
@@ -89,7 +89,7 @@
         android:layout_alignRight="@+id/rec_minutes"
         android:layout_below="@+id/rec_minutes"
         android:layout_marginTop="30dp"
-        android:background="@color/Gray"
+        android:background="@color/DarkGray"
         android:text="@string/label_ok" />
 
 </RelativeLayout>

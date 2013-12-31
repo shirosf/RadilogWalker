@@ -1,7 +1,6 @@
 package com.example.radilogwalker;
 
 import android.os.Bundle;
-import android.os.SystemClock;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Environment;
@@ -20,6 +19,7 @@ import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbManager;
 import android.widget.TextView;
 import android.widget.EditText;
+import android.widget.CheckBox;
 import android.location.LocationManager;
 import android.location.LocationListener;
 import android.location.Location;
@@ -62,6 +62,7 @@ public class MainActivity extends Activity
     private double mCurrentLatitude;
     private Date mGpsCaptureDate;
     private Date mDoseRateCaptureDate;
+    private Date mLastRecordDate;
     private String mDataFileName;
     private FileWriter mRecordFileWriter=null;
 
@@ -95,7 +96,6 @@ public class MainActivity extends Activity
     private final Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
-	    int doserate;
             switch (msg.what) {
                 case MESSAGE_REFRESH:
 		    if(!mDeviceInitialized) {
@@ -110,12 +110,16 @@ public class MainActivity extends Activity
 		    Log.d(TAG, "MESSAGE_READDATA");
 		    mDoseRate=readOneData()*0.001;
 		    Date cdt=new Date();
-		    long mdiff=cdt.getTime()-mDoseRateCaptureDate.getTime();
+		    long mdiff=cdt.getTime()-mLastRecordDate.getTime();
 		    mDoseRateCaptureDate=cdt;
 		    if(mAutoRecord){
-			if(mdiff >= mRectime*60*1000) recordOneData();
+			if(mdiff >= mRectime*60*1000) {
+			    recordOneData();
+			    mLastRecordDate=cdt;
+			}
 		    }
 		    mDataValueMessage.setText(String.format("%5.3f",mDoseRate));
+		    mStatusMessage.setText(getString(R.string.dev_updated));
 		    mHandler.sendEmptyMessageDelayed(MESSAGE_READDATA, getReadInterval());
 		    break;
                 default:
@@ -213,7 +217,7 @@ public class MainActivity extends Activity
 		}
 	    }else{
 		try {
-		    mRecordFileWriter=new FileWriter(rfile);
+		    mRecordFileWriter=new FileWriter(rfile, true);
 		}catch(IOException e){
 		    Log.e(TAG, "existing file can't be opened");
 		}
@@ -231,11 +235,26 @@ public class MainActivity extends Activity
 		    mDoseRate,sdf.format(mGpsCaptureDate),
 		    sdf.format(mDoseRateCaptureDate)));
 	    mRecordFileWriter.flush();
+	    mStatusMessage.setText(getString(R.string.dev_recorded));
 	}catch(IOException e){
 	    Log.e(TAG, "can't write data into the file");
 	    return false;
 	}
 	return true;
+    }
+
+    private void deleteRecFile()
+    {
+	if(mRecordFileWriter!=null) {
+	    try{
+		mRecordFileWriter.close();
+	    } catch(Exception e) { }
+	    mRecordFileWriter=null;
+	}
+	File path = Environment.getExternalStoragePublicDirectory
+	    (getString(R.string.data_directory));
+	File rfile = new File(path, mDataFileName);
+	if(rfile.exists()) rfile.delete();
     }
 	    
 
@@ -254,6 +273,7 @@ public class MainActivity extends Activity
 	mDataFileName=getString(R.string.default_recordfile);
 	mDoseRateCaptureDate=new Date();
 	mGpsCaptureDate=new Date();
+	mLastRecordDate=new Date();
 
 	initLocationManager();
     }
@@ -314,12 +334,14 @@ public class MainActivity extends Activity
 	    break;
         case R.id.rectime_auto:
 	    mMenu.findItem(R.id.rectime_manual).setChecked(false);
-	    mAutoRecord=true;
-	    setupRecordTimeDialog(this);
+	    setupRecordTimeDialog(mAutoRecord);
 	    break;
         case R.id.rectime_manual:
 	    mMenu.findItem(R.id.rectime_auto).setChecked(false);
 	    mAutoRecord=false;
+	    break;
+	case R.id.recfile_settings:
+	    setupRecordFileDialog();
 	    break;
 	}
 	item.setChecked(true);
@@ -335,9 +357,9 @@ public class MainActivity extends Activity
     }
 
 
-    private void setupRecordTimeDialog(Context context)
+    private void setupRecordTimeDialog(final boolean autorec)
     {
-	final Dialog dialog = new Dialog(context);
+	final Dialog dialog = new Dialog(this);
 	dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
 	dialog.setContentView(R.layout.rectime_setup);
 	Button dlOkButton = (Button) dialog.findViewById(R.id.rectime_ok);
@@ -363,7 +385,55 @@ public class MainActivity extends Activity
 			ms = 0;
 		    }
 		    mRectime=60*hs+ms;
+		    mAutoRecord=true;
 		    Log.d(TAG, String.format("setupRecordTimeDialog mRectime=%d\n",mRectime));
+		    dialog.dismiss();
+		}
+	    });
+	dlCancelButton.setOnClickListener(new View.OnClickListener() {
+		@Override
+		public void onClick(View v) {
+		    dialog.dismiss();
+		    if(!autorec){
+			mMenu.findItem(R.id.rectime_manual).setChecked(true);
+			mMenu.findItem(R.id.rectime_auto).setChecked(false);
+		    }
+		}
+	    });
+	dialog.show();
+    }
+
+    private void setupRecordFileDialog()
+    {
+	final Dialog dialog = new Dialog(this);
+	dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+	dialog.setContentView(R.layout.recfile_setup);
+	Button dlOkButton = (Button) dialog.findViewById(R.id.recfile_ok);
+	Button dlCancelButton = (Button) dialog.findViewById(R.id.recfile_cancel);
+	final EditText fname = (EditText) dialog.findViewById(R.id.recfname);
+	fname.setText(mDataFileName);
+	// if button is clicked, close the custom dialog
+	dlOkButton.setOnClickListener(new View.OnClickListener() {
+		@Override
+		public void onClick(View v) {
+		    CheckBox cb=(CheckBox)(dialog.findViewById(R.id.rec_discard));
+		    if(mDataFileName.equals(fname.getText().toString())){
+			if(cb.isChecked()){
+			    deleteRecFile();
+			}
+		    }else{
+			if(mRecordFileWriter!=null) {
+			    try{
+				mRecordFileWriter.close();
+			    } catch(Exception e) { }
+			    
+			    mRecordFileWriter=null;
+			}
+			mDataFileName=fname.getText().toString();
+			if(cb.isChecked()){
+			    deleteRecFile();
+			}
+		    }
 		    dialog.dismiss();
 		}
 	    });
@@ -375,6 +445,7 @@ public class MainActivity extends Activity
 	    });
 	dialog.show();
     }
+
 
     private final byte STX=0x02;
     private final byte ETX=0x03;

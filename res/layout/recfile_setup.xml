@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/RecfileLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/DimBlack"
+    android:orientation="vertical" >
+
+    <TextView
+        android:id="@+id/textView1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/recfile_setup"
+        android:layout_marginTop="29dp"
+        android:ems="10"
+        android:text="@string/file_name"
+        android:textColor="@color/White"
+        android:textSize="10pt" />
+
+    <EditText
+        android:id="@+id/recfname"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/textView1"
+        android:ems="10"
+        android:hint="@string/file_name"
+        android:inputType="text"
+        android:singleLine="true"
+        android:textColor="@color/White"
+        android:textSize="10pt" />
+
+    <TextView
+        android:id="@+id/recfile_setup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentTop="true"
+        android:ems="10"
+        android:text="@string/recfile_setup"
+        android:textColor="@color/White"
+        android:textSize="10pt" />
+
+    <CheckBox
+        android:id="@+id/rec_discard"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/recfname"
+        android:layout_marginTop="28dp"
+        android:text="@string/delete_record"
+        android:textColor="@color/White"
+        android:textSize="10pt" />
+
+    <Button
+        android:id="@+id/recfile_ok"
+        android:layout_width="120dp"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/rec_discard"
+        android:layout_marginTop="37dp"
+        android:background="@color/DarkGray"
+        android:text="@string/label_ok" />
+
+    <Button
+        android:id="@+id/recfile_cancel"
+        android:layout_width="120dp"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/recfile_ok"
+        android:layout_alignBottom="@+id/recfile_ok"
+        android:layout_alignParentRight="true"
+        android:background="@color/DarkGray"
+        android:text="@string/label_cancel" />
+
+</RelativeLayout>
