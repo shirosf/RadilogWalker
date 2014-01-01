@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Environment;
+import android.os.PowerManager;
 import android.util.Log;
 import android.app.Activity;
 import android.app.PendingIntent;
@@ -13,6 +14,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
+import android.view.WindowManager;
 import android.content.Context;
 import android.content.Intent;
 import android.hardware.usb.UsbDevice;
@@ -65,19 +67,20 @@ public class MainActivity extends Activity
     private Date mLastRecordDate;
     private String mDataFileName;
     private FileWriter mRecordFileWriter=null;
+    private Window mWindow;
 
     // use 3sec read interval for all measurement time
     private int getReadInterval()
     {
 	switch(mMesTime){
 	case MES30S:
-	    return 1000;
+	    return 5000;
 	case MES10S:
-	    return 1000;
+	    return 5000;
 	case MES03S:
-	    return 1000;
+	    return 3000;
 	}
-	return 1000;
+	return 3000;
     }
 	
     private byte[] getMestimeString()
@@ -113,9 +116,11 @@ public class MainActivity extends Activity
 		    long mdiff=cdt.getTime()-mLastRecordDate.getTime();
 		    mDoseRateCaptureDate=cdt;
 		    if(mAutoRecord){
-			if(mdiff >= mRectime*60*1000) {
+			long mrtmsec=mRectime*60*1000;
+			if(mdiff >= mrtmsec) {
 			    recordOneData();
-			    mLastRecordDate=cdt;
+			    mLastRecordDate.setTime(mLastRecordDate.getTime()+
+						    (mdiff/mrtmsec)*mrtmsec);
 			}
 		    }
 		    mDataValueMessage.setText(String.format("%5.3f",mDoseRate));
@@ -268,6 +273,7 @@ public class MainActivity extends Activity
 	mStatusMessage = (TextView) findViewById(R.id.status_message);
 	mContext = getApplicationContext();
 	mDataValueMessage = (TextView) findViewById(R.id.data_value);
+	mWindow = getWindow();
 
 	mDataFileName=getString(R.string.default_recordfile);
 	mDoseRateCaptureDate=new Date();
@@ -281,6 +287,7 @@ public class MainActivity extends Activity
     protected void onResume() {
         super.onResume();
         mHandler.sendEmptyMessage(MESSAGE_REFRESH);
+	mWindow.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
 	// Register the listener with the Location Manager to receive location updates
 	if(!mLocationListenerUpdated){
@@ -295,6 +302,7 @@ public class MainActivity extends Activity
         super.onPause();
         mHandler.removeMessages(MESSAGE_REFRESH);
 	mHandler.removeMessages(MESSAGE_READDATA);
+	mWindow.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
 	// Remove the listener you previously added
 	if(mLocationListenerUpdated){
