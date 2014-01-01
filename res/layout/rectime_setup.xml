@@ -20,7 +20,7 @@
     </TextView>
 
     <EditText
-        android:id="@+id/rec_hours"
+        android:id="@+id/rec_minutes"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
@@ -36,11 +36,11 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_above="@+id/TextView01"
-        android:layout_alignTop="@+id/rec_hours"
-        android:layout_toRightOf="@+id/rec_hours"
+        android:layout_alignTop="@+id/rec_minutes"
+        android:layout_toRightOf="@+id/rec_minutes"
         android:ems="10"
         android:gravity="center_vertical"
-        android:text="@string/unit_hours"
+        android:text="@string/unit_minutes"
         android:textColor="@color/White"
         android:textSize="12pt" >
 
@@ -48,11 +48,11 @@
     </TextView>
 
     <EditText
-        android:id="@+id/rec_minutes"
+        android:id="@+id/rec_seconds"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
-        android:layout_below="@+id/rec_hours"
+        android:layout_below="@+id/rec_minutes"
         android:ems="2"
         android:inputType="number"
         android:textColor="@color/OrangeRed"
@@ -62,13 +62,13 @@
         android:id="@+id/TextView01"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignBottom="@+id/rec_minutes"
+        android:layout_alignBottom="@+id/rec_seconds"
         android:layout_alignLeft="@+id/TextView1"
         android:layout_alignParentRight="true"
-        android:layout_alignTop="@+id/rec_minutes"
+        android:layout_alignTop="@+id/rec_seconds"
         android:ems="10"
         android:gravity="center_vertical"
-        android:text="@string/unit_minutes"
+        android:text="@string/unit_seconds"
         android:textColor="@color/White"
         android:textSize="12pt" />
 
@@ -86,8 +86,8 @@
         android:id="@+id/rectime_ok"
         android:layout_width="120dp"
         android:layout_height="wrap_content"
-        android:layout_alignRight="@+id/rec_minutes"
-        android:layout_below="@+id/rec_minutes"
+        android:layout_alignRight="@+id/rec_seconds"
+        android:layout_below="@+id/rec_seconds"
         android:layout_marginTop="30dp"
         android:background="@color/DarkGray"
         android:text="@string/label_ok" />

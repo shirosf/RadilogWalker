@@ -16,6 +16,7 @@
     <string name="rectime_setup">Auto Recoding Interval</string>
     <string name="unit_hours">hours</string>
     <string name="unit_minutes">minutes</string>
+    <string name="unit_seconds">seconds</string>
     <string name="interval_minutes">Interval(minutes)</string>
     <string name="label_ok">OK</string>
     <string name="label_cancel">Cancel</string>

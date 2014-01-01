@@ -16,6 +16,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.Intent;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbManager;
@@ -42,18 +43,14 @@ public class MainActivity extends Activity
     private UsbManager mUsbManager;
     private TextView mStatusMessage;
     private TextView mDataValueMessage;
-    private UsbDevice mDevice=null;
     private UsbSerialDriver mDriver=null;
-    private int mRectime=5; // minutes
-    private boolean mAutoRecord=false;
     private Context mContext;
 
     private static final int MESSAGE_REFRESH = 101;
     private static final int MESSAGE_READDATA = 102;
     private static final long REFRESH_TIMEOUT_MILLIS = 5000;
     private final String TAG = MainActivity.class.getSimpleName();
-    private enum MeasurementTime { MES30S, MES10S, MES03S }
-    private MeasurementTime mMesTime = MeasurementTime.MES30S;
+    private Window mWindow;
     private Menu mMenu;
     private boolean mDeviceInitialized = false;
     private LocationListener mLocationListener;
@@ -65,45 +62,47 @@ public class MainActivity extends Activity
     private Date mGpsCaptureDate;
     private Date mDoseRateCaptureDate;
     private Date mLastRecordDate;
-    private String mDataFileName;
     private FileWriter mRecordFileWriter=null;
-    private Window mWindow;
 
-    // use 3sec read interval for all measurement time
-    private int getReadInterval()
-    {
-	switch(mMesTime){
-	case MES30S:
-	    return 5000;
-	case MES10S:
-	    return 5000;
-	case MES03S:
-	    return 3000;
+    // settings in preferences
+    private MeasurementTime mMesTime;
+    private String mDataFileName;
+    private boolean mAutoRecord;
+    private int mRectime;
+
+    private static final byte[] TCOM_MES30SEC = {'8','0','2'};
+    private static final byte[] TCOM_MES10SEC = {'8','0','1'};
+    private static final byte[] TCOM_MES03SEC = {'8','0','0'};
+    private enum MeasurementTime {
+	MES30S(30, 5000, TCOM_MES30SEC),
+	MES10S(10, 5000, TCOM_MES10SEC),
+	MES03S(3, 3000, TCOM_MES03SEC);
+
+	private final int mes_interval; // seconds
+	private final int read_interval; // mili seconds
+	private final byte[] comstring;
+	MeasurementTime(int mes, int read, byte[] comstring) {
+	    this.mes_interval=mes;
+	    this.read_interval=read;
+	    this.comstring=comstring;
 	}
-	return 3000;
     }
-	
-    private byte[] getMestimeString()
+    private MeasurementTime secToMeasurementTime(int sec)
     {
-	switch(mMesTime){
-	case MES30S:
-	    return TCOM_MES30SEC;
-	case MES10S:
-	    return TCOM_MES10SEC;
-	case MES03S:
-	    return TCOM_MES03SEC;
-	}
-	return TCOM_MES30SEC;
+	if(sec<=3) return MeasurementTime.MES03S;
+	if(sec<=10) return MeasurementTime.MES10S;
+	return MeasurementTime.MES30S;
     }
-	
+    
     private final Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
             switch (msg.what) {
                 case MESSAGE_REFRESH:
+		    Log.d(TAG, "MESSAGE_REFRESH");
 		    if(!mDeviceInitialized) {
 			refreshDeviceList();
-			if(mDevice==null){
+			if(mDriver==null){
 			    mHandler.sendEmptyMessageDelayed(MESSAGE_REFRESH,
 							     REFRESH_TIMEOUT_MILLIS);
 			    break;
@@ -111,12 +110,23 @@ public class MainActivity extends Activity
 		    }
                 case MESSAGE_READDATA:
 		    Log.d(TAG, "MESSAGE_READDATA");
-		    mDoseRate=readOneData()*0.001;
+		    if(!mDeviceInitialized){
+			mHandler.sendEmptyMessageDelayed(MESSAGE_REFRESH, 1000);
+			break;
+		    }
+		    try{
+			mDoseRate=readOneData()*0.001;
+		    } catch (IOException e) {
+			Log.d(TAG, "readOneData IOException\n");
+			close_driver();
+			mHandler.sendEmptyMessageDelayed(MESSAGE_REFRESH, 1000);
+			break;
+		    }
 		    Date cdt=new Date();
 		    long mdiff=cdt.getTime()-mLastRecordDate.getTime();
 		    mDoseRateCaptureDate=cdt;
 		    if(mAutoRecord){
-			long mrtmsec=mRectime*60*1000;
+			long mrtmsec=mRectime*1000;
 			if(mdiff >= mrtmsec) {
 			    recordOneData();
 			    mLastRecordDate.setTime(mLastRecordDate.getTime()+
@@ -125,7 +135,7 @@ public class MainActivity extends Activity
 		    }
 		    mDataValueMessage.setText(String.format("%5.3f",mDoseRate));
 		    mStatusMessage.setText(getString(R.string.dev_updated));
-		    mHandler.sendEmptyMessageDelayed(MESSAGE_READDATA, getReadInterval());
+		    mHandler.sendEmptyMessageDelayed(MESSAGE_READDATA, mMesTime.read_interval);
 		    break;
                 default:
                     super.handleMessage(msg);
@@ -159,7 +169,6 @@ public class MainActivity extends Activity
 		Log.d(TAG, "the driver is not available");
 		continue;
 	    }
-	    mDevice=device;
 	    mDriver=drivers.get(0);
 	    if(init_driver() && setDeviceMesTime(mMesTime)){
 		mStatusMessage.setText(getString(R.string.dev_connected));
@@ -275,12 +284,34 @@ public class MainActivity extends Activity
 	mDataValueMessage = (TextView) findViewById(R.id.data_value);
 	mWindow = getWindow();
 
-	mDataFileName=getString(R.string.default_recordfile);
 	mDoseRateCaptureDate=new Date();
 	mGpsCaptureDate=new Date();
 	mLastRecordDate=new Date();
 
+       // Restore preferences
+	SharedPreferences settings = getPreferences(Context.MODE_PRIVATE);
+	mMesTime = secToMeasurementTime(settings.getInt("mestime", 30));
+	mRectime = settings.getInt("rectime", 60);
+	mAutoRecord = settings.getBoolean("autorecord", false);
+	mDataFileName = settings.getString("datafilename",
+					   getString(R.string.default_recordfile));
+
 	initLocationManager();
+	Log.d(TAG, "onCreate");
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+	
+	SharedPreferences settings = getPreferences(Context.MODE_PRIVATE);
+	SharedPreferences.Editor editor = settings.edit();
+	editor.putInt("mestime", mMesTime.mes_interval);
+	editor.putInt("rectime", mRectime);
+	editor.putBoolean("autorecord", mAutoRecord);
+	editor.putString("datafilename", mDataFileName);
+	editor.commit();
+	Log.d(TAG, "onStop");
     }
 
     @Override
@@ -295,6 +326,7 @@ public class MainActivity extends Activity
 						    3000, 0, mLocationListener);
 	    mLocationListenerUpdated=true;
 	}
+	Log.d(TAG, "onResume");
     }
 
     @Override
@@ -309,57 +341,76 @@ public class MainActivity extends Activity
 	    mLocationManager.removeUpdates(mLocationListener);
 	    mLocationListenerUpdated=false;
 	}
+	Log.d(TAG, "onPause");
     }
-    
+
+    private void setupMenuCheckbox()
+    {
+	mMenu.findItem(R.id.mestime_30s).setChecked(false);
+	mMenu.findItem(R.id.mestime_10s).setChecked(false);
+	mMenu.findItem(R.id.mestime_03s).setChecked(false);
+	switch (mMesTime){
+	case MES30S:
+	    mMenu.findItem(R.id.mestime_30s).setChecked(true);
+	    break;
+	case MES10S:
+	    mMenu.findItem(R.id.mestime_10s).setChecked(true);
+	    break;
+	case MES03S:
+	    mMenu.findItem(R.id.mestime_03s).setChecked(true);
+	    break;
+	}
+	if(mAutoRecord){
+	    mMenu.findItem(R.id.rectime_auto).setChecked(true);
+	    mMenu.findItem(R.id.rectime_manual).setChecked(false);
+	}else{
+	    mMenu.findItem(R.id.rectime_auto).setChecked(false);
+	    mMenu.findItem(R.id.rectime_manual).setChecked(true);
+	}
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu)
     {
 	// Inflate the menu; this adds items to the action bar if it is present.
 	getMenuInflater().inflate(R.menu.main, menu);
 	mMenu=menu;
+	setupMenuCheckbox();
 	return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-	MeasurementTime mestime=MeasurementTime.MES30S;
+	MeasurementTime mestime=mMesTime;
 	switch (item.getItemId()) {
         case R.id.mestime_30s:
 	    mestime=MeasurementTime.MES30S;
-	    mMenu.findItem(R.id.mestime_10s).setChecked(false);
-	    mMenu.findItem(R.id.mestime_03s).setChecked(false);
 	    break;
         case R.id.mestime_10s:
 	    mestime=MeasurementTime.MES10S;
-	    mMenu.findItem(R.id.mestime_30s).setChecked(false);
-	    mMenu.findItem(R.id.mestime_03s).setChecked(false);
 	    break;
         case R.id.mestime_03s:
 	    mestime=MeasurementTime.MES03S;
-	    mMenu.findItem(R.id.mestime_30s).setChecked(false);
-	    mMenu.findItem(R.id.mestime_10s).setChecked(false);
 	    break;
         case R.id.rectime_auto:
-	    mMenu.findItem(R.id.rectime_manual).setChecked(false);
 	    setupRecordTimeDialog(mAutoRecord);
 	    break;
         case R.id.rectime_manual:
-	    mMenu.findItem(R.id.rectime_auto).setChecked(false);
 	    mAutoRecord=false;
 	    break;
 	case R.id.recfile_settings:
 	    setupRecordFileDialog();
 	    break;
 	}
-	item.setChecked(true);
 	if(mMesTime!=mestime){
 	    mMesTime=mestime;
 	    if(mDeviceInitialized){
 		setDeviceMesTime(mMesTime);
 		mHandler.removeMessages(MESSAGE_READDATA);
-		mHandler.sendEmptyMessageDelayed(MESSAGE_READDATA, getReadInterval());
+		mHandler.sendEmptyMessageDelayed(MESSAGE_READDATA, mMesTime.read_interval);
 	    }
 	}
+	setupMenuCheckbox();
 	return true;
     }
 
@@ -371,10 +422,10 @@ public class MainActivity extends Activity
 	dialog.setContentView(R.layout.rectime_setup);
 	Button dlOkButton = (Button) dialog.findViewById(R.id.rectime_ok);
 	Button dlCancelButton = (Button) dialog.findViewById(R.id.rectime_cancel);
-	final EditText hours = (EditText) dialog.findViewById(R.id.rec_hours);
 	final EditText minutes = (EditText) dialog.findViewById(R.id.rec_minutes);
-	hours.setText(String.format("%d",mRectime/60));
-	minutes.setText(String.format("%d",mRectime%60));
+	final EditText seconds = (EditText) dialog.findViewById(R.id.rec_seconds);
+	minutes.setText(String.format("%d",mRectime/60));
+	seconds.setText(String.format("%d",mRectime%60));
 	// if button is clicked, close the custom dialog
 	dlOkButton.setOnClickListener(new View.OnClickListener() {
 		@Override
@@ -382,12 +433,12 @@ public class MainActivity extends Activity
 		    int hs;
 		    int ms;
 		    try {
-			hs = Integer.parseInt(hours.getText().toString());
+			hs = Integer.parseInt(minutes.getText().toString());
 		    } catch(Exception e) {
 			hs = 0;
 		    }
 		    try {
-			ms = Integer.parseInt(minutes.getText().toString());
+			ms = Integer.parseInt(seconds.getText().toString());
 		    } catch(Exception e) {
 			ms = 0;
 		    }
@@ -462,9 +513,6 @@ public class MainActivity extends Activity
     };
     private static final int RW_WAIT_MILLIS = 10000;
     private static final byte[] TCOM_DOSERATE = {'8','B','0'};
-    private static final byte[] TCOM_MES30SEC = {'8','0','2'};
-    private static final byte[] TCOM_MES10SEC = {'8','0','1'};
-    private static final byte[] TCOM_MES03SEC = {'8','0','0'};
 
     private boolean init_driver()
     {
@@ -474,17 +522,28 @@ public class MainActivity extends Activity
 				  UsbSerialDriver.PARITY_NONE);
 	} catch (IOException e) {
 	    Log.e(TAG, "Error setting up device: " + e.getMessage(), e);
-	    try {
-		mDriver.close();
-	    } catch (IOException e2) {
-                    // Ignore.
-	    }
-	    mDriver = null;
+	    close_driver();
 	    return false;
 	}
 	mDeviceInitialized=true;
 	return true;
     }
+
+    private boolean close_driver()
+    {
+	mDeviceInitialized=false;
+	Log.d(TAG,"close driver");
+	mStatusMessage.setText(getString(R.string.status_message));
+	if(mDriver==null) return false;
+	try {
+	    mDriver.close();
+	} catch (IOException e2) {
+	    // Ignore.
+	}
+	mDriver = null;
+	return true;
+    }
+	
 
     private int send_data(byte[] data) throws IOException 
     {
@@ -574,45 +633,42 @@ public class MainActivity extends Activity
 		Log.d(TAG, "can't send doserate command\n");
 		return false;
 	    }
-	    if(send_wait_ack(getMestimeString())!=0){
+	    if(send_wait_ack(mMesTime.comstring)!=0){
 		Log.d(TAG, "can't send measurement time parameter\n");
 		return false;
 	    }
 	    return true;
 	} catch (IOException e) {
 	    Log.d(TAG, "IOException\n");
+	    close_driver();
 	    return false;
 	}
     }
     
 
-    private int readOneData()
+    private int readOneData() throws IOException
     {
 	byte[] rdata=null;
 	int doserate;
 	if(!mDeviceInitialized) return 0;
-	try {
-	    Log.d(TAG, "Read one data\n");
-	    if(send_data(new byte[] {'0','1'})<0){
-		Log.d(TAG, "send_data 01 error\n");
-		return 0;
-	    }
-	    rdata=rec_data_tout();
-	    if(rdata==null){
-		Log.d(TAG, "rec_data_tout error\n");
-		return 0;
-	    }
-	    doserate=get_dose_rate(rdata);
-	    if(send_data(new byte[] {'0','2'})<0){
-		Log.d(TAG, "send_data 02 error\n");
-		return 0;
-	    }
-	    Log.d(TAG, String.format("Dose Rate = %d\n",doserate));
-	    return doserate;
-	} catch (IOException e) {
-	    Log.d(TAG, "IOException\n");
+
+	Log.d(TAG, "Read one data\n");
+	if(send_data(new byte[] {'0','1'})<0){
+	    Log.d(TAG, "send_data 01 error\n");
+	    return 0;
 	}
-	return 0;
+	rdata=rec_data_tout();
+	if(rdata==null){
+	    Log.d(TAG, "rec_data_tout error\n");
+	    return 0;
+	}
+	doserate=get_dose_rate(rdata);
+	if(send_data(new byte[] {'0','2'})<0){
+	    Log.d(TAG, "send_data 02 error\n");
+	    return 0;
+	}
+	Log.d(TAG, String.format("Dose Rate = %d\n",doserate));
+	return doserate;
     }
 
     /** Called when the user clicks the Read button */
