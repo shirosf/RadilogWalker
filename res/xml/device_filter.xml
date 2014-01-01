@@ -18,7 +18,7 @@
     <!-- 0x067B / 0x2303: Prolific PL2303 -->
     <usb-device vendor-id="1659" product-id="8963" />
     
-    <!-- 0x1ca6 / 0x0106 :TechnoAP, Mini SURVEY METER TC200,TC300 -->
-    <usb-device vendor-id="7334" product-id="262" />
+    <!-- 0x1ca6 / TechnoAP, Mini SURVEY METER TC200,TC300 -->
+    <usb-device vendor-id="7334" />
     
 </resources>

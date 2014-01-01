@@ -142,8 +142,7 @@ public class MainActivity extends Activity
 	    Log.d(TAG, String.format("Vendor ID=0x%04X, Product ID=0x%04X\n",
 						 device.getVendorId(),
 						 device.getProductId()));
-	    if(device.getVendorId()!=UsbId.VENDOR_TECHNOAP  ||
-	       device.getProductId()!=UsbId.TECHNOAP_TC200S) continue;
+	    if(device.getVendorId()!=UsbId.VENDOR_TECHNOAP) continue;
 
 	    if(!mUsbManager.hasPermission(device)) {
 		mUsbManager.requestPermission(device, mPermissionIntent);
