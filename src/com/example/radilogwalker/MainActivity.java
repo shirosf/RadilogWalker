@@ -4,7 +4,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Environment;
-import android.os.PowerManager;
+import android.os.Vibrator;
 import android.util.Log;
 import android.app.Activity;
 import android.app.PendingIntent;
@@ -43,11 +43,13 @@ public class MainActivity extends Activity
     private UsbManager mUsbManager;
     private TextView mStatusMessage;
     private TextView mDataValueMessage;
+    private Button mRecordButton;
     private UsbSerialDriver mDriver=null;
     private Context mContext;
 
     private static final int MESSAGE_REFRESH = 101;
     private static final int MESSAGE_READDATA = 102;
+    private static final int MESSAGE_RECORDED = 103;
     private static final long REFRESH_TIMEOUT_MILLIS = 5000;
     private final String TAG = MainActivity.class.getSimpleName();
     private Window mWindow;
@@ -134,9 +136,19 @@ public class MainActivity extends Activity
 			}
 		    }
 		    mDataValueMessage.setText(String.format("%5.3f",mDoseRate));
-		    mStatusMessage.setText(getString(R.string.dev_updated));
+
+		    SimpleDateFormat sdf=new SimpleDateFormat("HH:mm:ss");
+		    mStatusMessage.setText(String.format("%s - %s",
+							 getString(R.string.dev_updated),
+							 sdf.format(cdt)));
+
 		    mHandler.sendEmptyMessageDelayed(MESSAGE_READDATA, mMesTime.read_interval);
 		    break;
+
+	        case MESSAGE_RECORDED:
+		    mRecordButton.setTextColor(getResources().getColor(R.color.White));
+		    break;
+		    
                 default:
                     super.handleMessage(msg);
                     break;
@@ -249,6 +261,8 @@ public class MainActivity extends Activity
 		    sdf.format(mDoseRateCaptureDate)));
 	    mRecordFileWriter.flush();
 	    mStatusMessage.setText(getString(R.string.dev_recorded));
+	    mRecordButton.setTextColor(getResources().getColor(R.color.Red));
+	    mHandler.sendEmptyMessageDelayed(MESSAGE_RECORDED, 1000);
 	}catch(IOException e){
 	    Log.e(TAG, "can't write data into the file");
 	    return false;
@@ -282,6 +296,8 @@ public class MainActivity extends Activity
 	mStatusMessage = (TextView) findViewById(R.id.status_message);
 	mContext = getApplicationContext();
 	mDataValueMessage = (TextView) findViewById(R.id.data_value);
+	mRecordButton = (Button) findViewById(R.id.save_data);
+
 	mWindow = getWindow();
 
 	mDoseRateCaptureDate=new Date();
@@ -674,7 +690,11 @@ public class MainActivity extends Activity
     /** Called when the user clicks the Read button */
     public void saveData(View view)
     {
-	recordOneData();
+	if(mDriver!=null){
+	    recordOneData();
+	    Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+	    v.vibrate(100); // vibrate 100msec
+	}
     }
 
 }

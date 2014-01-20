@@ -52,6 +52,7 @@
         android:background="@color/DarkGray"
         android:onClick="saveData"
         android:text="@string/data_save"
+        android:textSize="18pt"
         android:textColor="@color/White" />
 
 </RelativeLayout>
