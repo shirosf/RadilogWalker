@@ -23,6 +23,10 @@
     <string name="dev_connected">接続中</string>
     <string name="dev_updated">データ更新</string>
     <string name="dev_recorded">データ保存</string>
+    <string name="default_recordfile">RLWData.csv</string>
+    <string name="csv_tags">Latitude,Longitude,DoseRate,GpsDateTime,DoseDateTime</string>
+    <string name="datetime_format">yyyy-MM-dd HH:mm:ss</string>
+    <string name="data_directory">RadilogWalker</string>
     <string name="recfile_setup">記録ファイル設定</string>
     <string name="file_name">ファイル名</string>
     <string name="delete_record">記録データ削除</string>
