@@ -1,0 +1,33 @@
+* RadilogWalker README
+** What it is
+This is a simple utility tool to read doserate data from Techno AP
+TC200/TC300 dosemeter.
+
+The protocol to read out the data from Techno AP TC200/TC300 has been
+analyzed by reverse engineering in 2013.
+
+** usb-serial-for-android
+This program relies on 'usb-serial-for-android' library.
+The original 'usb-serial-for-android' must be patched to add Vendor ID
+and Product ID.
+You can get the patched program by the next command:
+git clone -b tap01 https://github.com/shirosf/usb-serial-for-android.git 
+
+** How to use
+  install RadilogWalker on your android device
+
+  attach TC200/TC300 to your android device by a USB OTG cable
+
+  Hit RadilogWalker icon
+
+  Once RadilogWalker recognizes the attached TC200/TC300, the display
+  panel on TC200/TC300 turns to black.
+
+  There are some menu items, you can easily figured out what they are.
+
+  The data record file will be saved under '[HomeDirectory]/RadilogWalker/'
+
+** Author, License, and Copyright
+
+RadilogWalker is written and copyrighted by 'Shiro Ninomiya'.
+It is released under 'GNU GENERAL PUBLIC LICENSE Version 3'
