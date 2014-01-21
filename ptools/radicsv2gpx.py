@@ -1,12 +1,17 @@
 #!/usr/bin/python
 import sys
 import time
+import cgi
+import cgitb; cgitb.enable()
 
 class RadiCsvFile():
     tags={"Latitude":0,"Longitude":0,"DoseRate":0,"GpsDateTime":0,"DoseDateTime":0}
     ritems=None
-    def __init__(self, fname):
-        self.inf=open(fname, 'r')
+    def __init__(self, fname, infile=None):
+        if infile:
+            self.inf=infile
+        else:
+            self.inf=open(fname, 'r')
         line=self.get_nextline()
         if line=="": return self.nodata_in_file()
         if len(self.tags) != len(self.ritems):
@@ -77,19 +82,64 @@ def gpx_footer():
     res = '</trkseg></trk>\n'
     res += '</gpx>'
     return res
-            
-if __name__ == '__main__':
-    name='RadiLogData'
-    if len(sys.argv)>2: name=sys.argv[2]
 
-    rcf=RadiCsvFile(sys.argv[1])
+def html_header():
+    res = """Content-Type: text/html
+
+<html>
+  <head>
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+  </head>
+  <body>
+  <form enctype="multipart/form-data" action="" method="post">
+  <p>File: <input type="file" name="file" /></p>
+  <p>Name: <input type="text" name="tname" /></p>
+  <p><input type="submit" value="Upload" /></p>
+  </form>
+"""
+    return res
+
+def html_footer():
+    return "</body></html>"
+
+def cgi_fields():
+    form = cgi.FieldStorage()
+    ufile = None
+    if 'file' in form: ufile = form['file']
+    tname = form.getvalue('tname',"")
+    return ufile, tname
+
+if __name__ == '__main__':
+    tname='RadiLogWalkerData'
+    uinf = None
+    if len(sys.argv)<2:
+        ufile, name = cgi_fields()
+        if name: tname=name
+        print html_header()
+        if not ufile: uinf = ufile.file
+        ufname = None
+    else:
+        ufname=sys.argv[1]
+        if len(sys.argv)>2: tname=sys.argv[2]
+
+    if not ufname and not uinf:
+        print html_footer()
+        sys.exit(0)
+
+    rcf=RadiCsvFile(ufname, uinf)
     if not rcf.inf: sys.exit(1)
-    print gpx_header(name)
+    rdata=gpx_header(tname)+'\n'
     while True:
         nl=rcf.next_dataline_in_gpx()
         if not nl: break
-        print nl
-    print gpx_footer()
+        rdata+=nl+'\n'
+    rdata+=gpx_footer()
+    
+    if ufname:
+        print rdata
+    else:
+        open('output.gpx','w').write(rdata)
+        print '<a href="output.gpx">Download the converted file</a>'
+        print html_footer()
+
     rcf.close()
-
-
