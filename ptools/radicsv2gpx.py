@@ -116,7 +116,10 @@ if __name__ == '__main__':
         ufile, name = cgi_fields()
         if name: tname=name
         print html_header()
-        if not ufile: uinf = ufile.file
+        try:
+            uinf = ufile.file
+        except:
+            pass
         ufname = None
     else:
         ufname=sys.argv[1]
