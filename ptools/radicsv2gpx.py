@@ -51,14 +51,17 @@ class RadiCsvFile():
         return time.strftime("%Y-%m-%dT%H:%M:%SZ", 
                              time.gmtime(time.mktime(time.strptime(dt, "%Y-%m-%d %H:%M:%S"))))
 
-            
-if __name__ == '__main__':
-    name='RadiLogData'
-    if len(sys.argv)>2: name=sys.argv[2]
+    def next_dataline_in_gpx(self):
+        if not self.get_nextline(): return None
+        return '<trkpt lat="%s" lon="%s"><ele>%d</ele><time>%s</time></trkpt>' % ( \
+            self.get_item("Latitude"),
+            self.get_item("Longitude"),
+            int(float(self.get_item("DoseRate"))*1000),
+            self.conv_to_utc(self.get_item("DoseDateTime")) )
+        
 
-    rcf=RadiCsvFile(sys.argv[1])
-    if not rcf.inf: sys.exit(1)
-    print """<?xml version="1.0" encoding="UTF-8"?>
+def gpx_header(name):
+    res="""<?xml version="1.0" encoding="UTF-8"?>
 <gpx
   version="1.0"
   creator="GPSBabel - http://www.gpsbabel.org"
@@ -66,17 +69,27 @@ if __name__ == '__main__':
   xmlns="http://www.topografix.com/GPX/1/0"
   xsi:schemaLocation="http://www.topografix.com/GPX/1/0 http://www.topografix.com/GPX/1/0/gpx.xsd">
 """
-    print '<trk><name>%s</name>' % name
-    print '<trkseg>'
+    res+='<trk><name>%s</name>\n' % name
+    res+='<trkseg>'
+    return res
+
+def gpx_footer():
+    res = '</trkseg></trk>\n'
+    res += '</gpx>'
+    return res
+            
+if __name__ == '__main__':
+    name='RadiLogData'
+    if len(sys.argv)>2: name=sys.argv[2]
+
+    rcf=RadiCsvFile(sys.argv[1])
+    if not rcf.inf: sys.exit(1)
+    print gpx_header(name)
     while True:
-        if not rcf.get_nextline(): break
-        print '<trkpt lat="%s" lon="%s"><ele>%d</ele><time>%s</time></trkpt>' % ( \
-            rcf.get_item("Latitude"),
-            rcf.get_item("Longitude"),
-            int(float(rcf.get_item("DoseRate"))*1000),
-            rcf.conv_to_utc(rcf.get_item("DoseDateTime")) )
-    print '</trkseg></trk>'
-    print '</gpx>'
+        nl=rcf.next_dataline_in_gpx()
+        if not nl: break
+        print nl
+    print gpx_footer()
     rcf.close()
 
 
