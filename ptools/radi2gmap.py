@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 
 import radicsv2gpx
 import sys
@@ -124,7 +125,8 @@ def cgi_fields():
     ufile = None
     if 'file' in form: ufile = form['file']
     tname = form.getvalue('tname',"")
-    return ufile, tname
+    maxvalue = form.getvalue('maxvalue','0.2')
+    return ufile, tname, float(maxvalue)
 
 def file_upload_form():
     res = """Content-Type: text/html
@@ -135,8 +137,9 @@ def file_upload_form():
   </head>
   <body>
   <form enctype="multipart/form-data" action="" method="post">
-  <p>File: <input type="file" name="file" /></p>
-  <p>Title(optional): <input type="text" name="tname" /></p>
+  <p>CSV File: <input type="file" name="file" /></p>
+  <p>タイトル（なくてもいい）: <input type="text" name="tname" /></p>
+  <p>最高線量: <input type="text" name="maxvalue" value="0.2"/></p>
   <p><input type="submit" value="Upload" /></p>
   </form>
   </body>
@@ -148,7 +151,7 @@ if __name__ == '__main__':
     tname='RadiLogWalkerData'
     uinf = None
     if len(sys.argv)<2:
-        ufile, name = cgi_fields()
+        ufile, name, vmax = cgi_fields()
         if name: tname=name
         try:
             uinf = ufile.file
@@ -165,7 +168,7 @@ if __name__ == '__main__':
 
     print html_header()
     rcf=radicsv2gpx.RadiCsvFile(ufname, uinf)
-    hue=HueExpression()
+    hue=HueExpression(vmax=vmax)
     if not rcf.inf: sys.exit(1)
     write_contents_script(rcf, hue)
     print "</head><body>"
