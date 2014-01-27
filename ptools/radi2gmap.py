@@ -54,6 +54,7 @@ class HueExpression():
     def dose_to_hue(self, value):
         r=(value-self.value_min)/(self.value_max - self.value_min)
         if r<0.0: r=0.0
+        if r>1.0: r=1.0
         return r*(self.hue_end - self.hue_start) + self.hue_start
 
     def hsv_to_rgb(self, h, s=1.0, v=1.0):
@@ -73,7 +74,7 @@ class HueExpression():
         return "#%02X%02X%02X" % (r*255,g*255,b*255)
 
 
-def write_contents_script(rcf, hue):
+def write_contents_script(rcf, hue, radius):
     print """<script>
 var dosemap = new Array();
 """
@@ -110,7 +111,9 @@ function initialize() {
       fillOpacity: 1.0,
       map: map,
       center: dosemap[i].center,
-      radius: 20
+"""
+    print "radius: %d" % radius
+    print """
     };
     // Add the circle for this dose to the map.
     doseCircle = new google.maps.Circle(doserateOptions);
@@ -126,7 +129,8 @@ def cgi_fields():
     if 'file' in form: ufile = form['file']
     tname = form.getvalue('tname',"")
     maxvalue = form.getvalue('maxvalue','0.2')
-    return ufile, tname, float(maxvalue)
+    radius = form.getvalue('radius','20')
+    return ufile, tname, float(maxvalue), int(radius)
 
 def file_upload_form():
     res = """Content-Type: text/html
@@ -140,6 +144,7 @@ def file_upload_form():
   <p>CSV File: <input type="file" name="file" /></p>
   <p>タイトル（なくてもいい）: <input type="text" name="tname" /></p>
   <p>最高線量: <input type="text" name="maxvalue" value="0.2"/></p>
+  <p>マーカーの半径: <input type="text" name="radius" value="20"/></p>
   <p><input type="submit" value="Upload" /></p>
   </form>
   </body>
@@ -150,8 +155,10 @@ def file_upload_form():
 if __name__ == '__main__':
     tname='RadiLogWalkerData'
     uinf = None
+    radius = 20
+    vmax = 0.2
     if len(sys.argv)<2:
-        ufile, name, vmax = cgi_fields()
+        ufile, name, vmax, radius = cgi_fields()
         if name: tname=name
         try:
             uinf = ufile.file
@@ -170,7 +177,7 @@ if __name__ == '__main__':
     rcf=radicsv2gpx.RadiCsvFile(ufname, uinf)
     hue=HueExpression(vmax=vmax)
     if not rcf.inf: sys.exit(1)
-    write_contents_script(rcf, hue)
+    write_contents_script(rcf, hue, radius)
     print "</head><body>"
     print '<div style="z-index:1;" id="map-canvas"></div>'
     hue.html_legend()
