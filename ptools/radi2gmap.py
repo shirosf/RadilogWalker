@@ -1,10 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import radicsv2gpx
+import csv
 import sys
+import argparse
 import cgi
 import cgitb; cgitb.enable()
+import glob
 
 def html_header():
     res = """Content-Type: text/html
@@ -73,114 +75,183 @@ class HueExpression():
         r,g,b=self.hsv_to_rgb(h)
         return "#%02X%02X%02X" % (r*255,g*255,b*255)
 
+class GmapScript():
+    def __init__(self):
+        self.dataindex=0
+        self.latmax=-90.0
+        self.latmin=90.0
+        self.longmax=-180.0
+        self.longmin=180.0
+        self.lastpoint=(35.660426,139.324963)
 
-def write_contents_script(rcf, hue, radius):
-    print """<script>
+    def latlong_maxmin(self, lat, lng):
+        if lat>self.latmax: self.latmax=lat
+        if lat<self.latmin: self.latmin=lat
+        if lng>self.longmax: self.longmax=lng
+        if lng<self.longmin: self.longmin=lng
+        self.lastpoint=(lat,lng)
+
+    def write_header(self):
+        print """<script>
 var dosemap = new Array();
 """
-    
-    i=0
-    while rcf.get_nextline():
-        print "dosemap[%d] = {center: new google.maps.LatLng(%s, %s)," \
-            % (i, rcf.get_item("Latitude"), rcf.get_item("Longitude")),
-        print 'doserate: %s, colordose: "%s"};' % \
-            (rcf.get_item("DoseRate"), hue.rgb_string(float(rcf.get_item("DoseRate"))))
-        i+=1
 
-    print """
+    def write_contents(self, rcf, hue):
+        i=0
+        print "dosemap[%d] = new Array();" % self.dataindex
+        for row in rcf:
+            print "dosemap[%d][%d] = {center: new google.maps.LatLng(%s, %s)," \
+                % (self.dataindex, i, row["Latitude"], row["Longitude"]),
+            print 'doserate: %s, colordose: "%s"};' % \
+                (row["DoseRate"], hue.rgb_string(float(row["DoseRate"])))
+            self.latlong_maxmin(float(row["Latitude"]), float(row["Longitude"]))
+            i+=1
+        self.dataindex+=1
+
+    def write_footer(self, radius):
+        print """
 var doseCircle;
 function initialize() {
   var mapOptions = {
     zoom: 16,
 """
-    print "center: new google.maps.LatLng(%s, %s)," % \
-        (rcf.get_item("Latitude"), rcf.get_item("Longitude"))
+        print "center: new google.maps.LatLng(%s, %s)," % \
+        (self.lastpoint[0], self.lastpoint[1])
 
-    print """
+        print """
     mapTypeId: google.maps.MapTypeId.ROADMAP
   };
   var map = new google.maps.Map(document.getElementById('map-canvas'),
       mapOptions);
 
-  for (i=0;i<dosemap.length;i++) {
-    var doserateOptions = {
-      strokeColor: '#FF0000',
-      strokeOpacity: 1.0,
-      strokeWeight: 0,
-      fillColor: dosemap[i].colordose,
-      fillOpacity: 1.0,
-      map: map,
-      center: dosemap[i].center,
+  for (j=0;j<dosemap.length;j++) {
+    for (i=0;i<dosemap[j].length;i++) {
+      var doserateOptions = {
+        strokeColor: '#FF0000',
+        strokeOpacity: 1.0,
+        strokeWeight: 0,
+        fillColor: dosemap[j][i].colordose,
+        fillOpacity: 1.0,
+        map: map,
+        center: dosemap[j][i].center,
 """
-    print "radius: %d" % radius
-    print """
-    };
+        print "        radius: %d" % radius
+        print """
+      };
     // Add the circle for this dose to the map.
-    doseCircle = new google.maps.Circle(doserateOptions);
+      doseCircle = new google.maps.Circle(doserateOptions);
+    }
   }
 }
 google.maps.event.addDomListener(window, 'load', initialize);
     </script>
 """
 
-def cgi_fields():
-    form = cgi.FieldStorage()
-    ufile = None
-    if 'file' in form: ufile = form['file']
-    tname = form.getvalue('tname',"")
-    maxvalue = form.getvalue('maxvalue','0.2')
-    radius = form.getvalue('radius','20')
-    return ufile, tname, float(maxvalue), int(radius)
+class radi2gmap_cgifields():
+    rinf = None
+    ufilename = None
+    datatypes={'swalk':False, 'walk':False, 'bike':False, 'motor':False}
+    tname = 'RadiLogWalkerData'
+    maxvalue = 0.2
+    radius = 20
+    datadir = '/var/www/hachisoku/pdata/radilog'
+    fg=None
+    def __init__(self):
+        if len(sys.argv)<=1:
+            form = cgi.FieldStorage()
+            if 'file' in form:
+                ufile = form['file']
+                try:
+                    self.rinf = ufile.file
+                    self.ufilename = ufile.filename
+                except:
+                    self.rinf = None
+            for dt in self.datatypes:
+                if dt in form: self.datatypes[dt]=form[dt].value
+            if 'tname' in form: self.tname = form['tname'].value
+            if 'maxvalue' in form: self.maxvalue = float(form['maxvalue'].value)
+            if 'radius' in form: self.radius = int(form['radius'].value)
+            if 'datadir' in form: self.datadir = form['datadir'].value
+            return
+
+        parser=argparse.ArgumentParser()
+        parser.add_argument('-f', '--file')
+        parser.add_argument('-s', '--swalk', action='store_true')
+        parser.add_argument('-w', '--walk', action='store_true')
+        parser.add_argument('-b', '--bike', action='store_true')
+        parser.add_argument('-m', '--motor', action='store_true')
+        parser.add_argument('-t', '--tname')
+        parser.add_argument('-x', '--maxvalue', type=float)
+        parser.add_argument('-r', '--radius', type=int)
+        parser.add_argument('-d', '--datadir')
+        paras=parser.parse_args()
+        if paras.file:
+            self.rinf=open(paras.file,"r")
+        if paras.swalk: self.datatypes['swalk']=paras.swalk
+        if paras.walk: self.datatypes['walk']=paras.walk
+        if paras.bike: self.datatypes['bike']=paras.bike
+        if paras.motor: self.datatypes['motor']=paras.motor
+        if paras.tname: self.tname=paras.tname
+        if paras.maxvalue: self.maxvalue=float(paras.maxvalue)
+        if paras.radius: self.radius=int(paras.radius)
+        if paras.datadir: self.datadir=paras.datadir
+
+    def __iter__(self):
+        return self.fgen()
+
+    def fgen(self):
+        if self.rinf and self.ufilename:
+            yield self.rinf
+            self.rinf.close()
+        for dt in self.datatypes:
+            if self.datatypes[dt]:
+                fpath='/'.join([self.datadir,dt])
+                flist=glob.glob('%s/*.csv' % fpath)+glob.glob('%s/*.CSV' % fpath)
+                for f in flist:
+                    self.rinf=open(f,"r")
+                    yield self.rinf
+                    self.rinf.close()
+
 
 def file_upload_form():
-    res = """Content-Type: text/html
-
-<html>
-  <head>
-    <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
-  </head>
-  <body>
-  <form enctype="multipart/form-data" action="" method="post">
-  <p>CSV File: <input type="file" name="file" /></p>
-  <p>タイトル（なくてもいい）: <input type="text" name="tname" /></p>
+    res = """<form enctype="multipart/form-data" action="" method="post">
+  <p><b>CSVファイルをアップロードして表示させる場合</b><br/>
+  CSV File: <input type="file" name="file" /></p>
+  <p><b>サーバーにあるデータを表示させる場合</b><br/>
+  <input type="checkbox" name="swalk" value="swalk" />RadilogWalker（鉛遮蔽あり）歩行測定データ</br>
+  <input type="checkbox" name="walk" value="walk" />歩行測定データ</br>
+  <input type="checkbox" name="bike" value="bike" />自転車測定データ</br>
+  <input type="checkbox" name="motor" value="motor" />自動車測定データ
+  </p>
+  <!-- p>タイトル（なくてもいい）: <input type="text" name="tname" /></p -->
   <p>最高線量: <input type="text" name="maxvalue" value="0.2"/></p>
   <p>マーカーの半径: <input type="text" name="radius" value="20"/></p>
   <p><input type="submit" value="Upload" /></p>
   </form>
-  </body>
-</html>
 """
     return res
 
 if __name__ == '__main__':
-    tname='RadiLogWalkerData'
-    uinf = None
-    radius = 20
-    vmax = 0.2
-    if len(sys.argv)<2:
-        ufile, name, vmax, radius = cgi_fields()
-        if name: tname=name
-        try:
-            uinf = ufile.file
-        except:
-            pass
-        ufname = None
-    else:
-        ufname=sys.argv[1]
-        if len(sys.argv)>2: tname=sys.argv[2]
-
-    if not ufname and not uinf:
-        print file_upload_form()
-        sys.exit(0)
+    
+    cgif=radi2gmap_cgifields()
 
     print html_header()
-    rcf=radicsv2gpx.RadiCsvFile(ufname, uinf)
-    hue=HueExpression(vmax=vmax)
-    if not rcf.inf: sys.exit(1)
-    write_contents_script(rcf, hue, radius)
+    hue=HueExpression(vmax=cgif.maxvalue)
+    gmaps=GmapScript()
+    gmaps.write_header()
+    fnum=0
+    for inf in cgif:
+        rcf=csv.DictReader(inf)
+        gmaps.write_contents(rcf, hue)
+        fnum+=1
+
+    gmaps.write_footer(cgif.radius)
     print "</head><body>"
-    print '<div style="z-index:1;" id="map-canvas"></div>'
-    hue.html_legend()
+    if fnum>0:
+        print '<div style="z-index:1;" id="map-canvas"></div>'
+        hue.html_legend()
+    else:
+        print file_upload_form()
+
     print "</body>"
     print html_footer()
-    rcf.close()
