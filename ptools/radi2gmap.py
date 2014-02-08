@@ -227,6 +227,11 @@ def file_upload_form():
   <p>最高線量: <input type="text" name="maxvalue" value="0.2"/></p>
   <p>マーカーの半径: <input type="text" name="radius" value="20"/></p>
   <p><input type="submit" value="Upload" /></p>
+  <p>CSVファイルをアップロードして表示させる場合、1行目のフィールド名に次の3項目が必要です。<br/>
+  Latitude,Longitude,DoseRate<br/><br/>
+  Latitude,Longitudeは小数点表示の緯度、経度。<br/>
+  DoseRateは小数点表示のuSv/h単位の線量。<br/>
+  </p>
   </form>
 """
     return res
