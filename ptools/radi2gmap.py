@@ -7,6 +7,8 @@ import argparse
 import cgi
 import cgitb; cgitb.enable()
 import glob
+import hashlib
+import os
 
 def html_header():
     res = """Content-Type: text/html
@@ -96,7 +98,7 @@ class GmapScript():
 var dosemap = new Array();
 """
 
-    def write_contents(self, rcf, hue):
+    def write_contents(self, rcf, hue, wcf=None):
         i=0
         print "dosemap[%d] = new Array();" % self.dataindex
         for row in rcf:
@@ -105,6 +107,7 @@ var dosemap = new Array();
             print 'doserate: %s, colordose: "%s"};' % \
                 (row["DoseRate"], hue.rgb_string(float(row["DoseRate"])))
             self.latlong_maxmin(float(row["Latitude"]), float(row["Longitude"]))
+            if wcf: wcf.writerow(row)
             i+=1
         self.dataindex+=1
 
@@ -149,6 +152,7 @@ google.maps.event.addDomListener(window, 'load', initialize);
 
 class radi2gmap_cgifields():
     rinf = None
+    routf = None
     ufilename = None
     datatypes={'swalk':False, 'walk':False, 'bike':False, 'motor':False}
     tname = 'RadiLogWalkerData'
@@ -156,9 +160,18 @@ class radi2gmap_cgifields():
     radius = 20
     datadir = '/var/www/hachisoku/pdata/radilog'
     fg=None
-    def __init__(self):
+    passmatch=None
+    salt='N9Cr/74Q0ZHFRYY3oGjfU484ufQRiucicFReGZchWgE='
+    digest='f711d88bebe95eb58eb25e32fedb8269431d237f201dfc919141b05b15d3a9a9'
+    def __init__(self, salt=None, digest=None):
         if len(sys.argv)<=1:
+            if salt: self.salt=salt
+            if digest: self.digest=digest
             form = cgi.FieldStorage()
+            if 'password' in form:
+                self.passmatch = \
+                    hashlib.sha256(form['password'].value+self.salt).hexdigest() == self.digest
+            if 'datadir' in form: self.datadir = form['datadir'].value
             if 'file' in form:
                 ufile = form['file']
                 try:
@@ -171,7 +184,6 @@ class radi2gmap_cgifields():
             if 'tname' in form: self.tname = form['tname'].value
             if 'maxvalue' in form: self.maxvalue = float(form['maxvalue'].value)
             if 'radius' in form: self.radius = int(form['radius'].value)
-            if 'datadir' in form: self.datadir = form['datadir'].value
             return
 
         parser=argparse.ArgumentParser()
@@ -202,8 +214,18 @@ class radi2gmap_cgifields():
 
     def fgen(self):
         if self.rinf and self.ufilename:
+            if self.passmatch==True:
+                fname='/tmp/'.join([self.datadir, self.ufilename])
+                self.routf = None
+                if not os.path.isfile(fname):
+                    try:
+                        self.routf = open(fname,"w")
+                    except:
+                        pass
             yield self.rinf
             self.rinf.close()
+            if self.routf: self.routf.close()
+            self.routf=None
         for dt in self.datatypes:
             if self.datatypes[dt]:
                 fpath='/'.join([self.datadir,dt])
@@ -217,7 +239,9 @@ class radi2gmap_cgifields():
 def file_upload_form():
     res = """<form enctype="multipart/form-data" action="" method="post">
   <p><b>CSVファイルをアップロードして表示させる場合</b><br/>
-  CSV File: <input type="file" name="file" /></p>
+  CSV File: <input type="file" name="file" /><br/>
+  サーバーにデータを残したい時はPasswordを入力 
+  Password: <input type="text" name="password" style="width:4em" /></p>
   <p><b>サーバーにあるデータを表示させる場合</b><br/>
   <input type="checkbox" name="swalk" value="swalk" />RadilogWalker（鉛遮蔽あり）歩行測定データ</br>
   <input type="checkbox" name="walk" value="walk" />歩行測定データ</br>
@@ -254,17 +278,28 @@ if __name__ == '__main__':
                 'DoseRate' not in rcf.fieldnames:
             dataerror=True
             continue
-        gmaps.write_contents(rcf, hue)
+        if cgif.routf:
+            wcf=csv.DictWriter(cgif.routf,rcf.fieldnames)
+            wcf.writeheader()
+        else:
+            wcf=None
+        gmaps.write_contents(rcf, hue, wcf)
         fnum+=1
 
     gmaps.write_footer(cgif.radius)
     print "</head><body>"
-    if fnum>0:
+
+    errmsg=""
+    if dataerror:
+        errmsg+='<p style="color:red">CSVファイルのフォーマットが正しくありません</p>'
+    if cgif.passmatch==False:
+        errmsg+='<p style="color:red">Passwordが正しくありません</p>'
+
+    if fnum>0 and not errmsg:
         print '<div style="z-index:1;" id="map-canvas"></div>'
         hue.html_legend()
     else:
-        if dataerror:
-            print '<p style="color:red">CSVファイルのフォーマットが正しくありません</p>'
+        print errmsg
         print file_upload_form()
 
     print "</body>"
