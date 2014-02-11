@@ -187,6 +187,7 @@ class radi2gmap_cgifields():
         paras=parser.parse_args()
         if paras.file:
             self.rinf=open(paras.file,"r")
+            self.ufilename = paras.file
         if paras.swalk: self.datatypes['swalk']=paras.swalk
         if paras.walk: self.datatypes['walk']=paras.walk
         if paras.bike: self.datatypes['bike']=paras.bike
@@ -226,7 +227,7 @@ def file_upload_form():
   <!-- p>タイトル（なくてもいい）: <input type="text" name="tname" /></p -->
   <p>最高線量: <input type="text" name="maxvalue" value="0.2"/></p>
   <p>マーカーの半径: <input type="text" name="radius" value="20"/></p>
-  <p><input type="submit" value="Upload" /></p>
+  <p><button name="Upload" type="submit" value="Upload" style="width:5em" />表示</button></p>
   <p>CSVファイルをアップロードして表示させる場合、1行目のフィールド名に次の3項目が必要です。<br/>
   Latitude,Longitude,DoseRate<br/><br/>
   Latitude,Longitudeは小数点表示の緯度、経度。<br/>
@@ -245,8 +246,14 @@ if __name__ == '__main__':
     gmaps=GmapScript()
     gmaps.write_header()
     fnum=0
+    dataerror=False
     for inf in cgif:
         rcf=csv.DictReader(inf)
+        if 'Latitude' not in rcf.fieldnames or \
+                'Longitude' not in rcf.fieldnames or \
+                'DoseRate' not in rcf.fieldnames:
+            dataerror=True
+            continue
         gmaps.write_contents(rcf, hue)
         fnum+=1
 
@@ -256,6 +263,8 @@ if __name__ == '__main__':
         print '<div style="z-index:1;" id="map-canvas"></div>'
         hue.html_legend()
     else:
+        if dataerror:
+            print '<p style="color:red">CSVファイルのフォーマットが正しくありません</p>'
         print file_upload_form()
 
     print "</body>"
