@@ -8,9 +8,12 @@
     <string name="status_message">Waiting Connection</string>
     <string name="data_label">Measured Value(uSv/h)</string>
     <string name="data_save">Record the value</string>
+    <string name="mes_90s">90 seconds</string>
+    <string name="mes_60s">60 seconds</string>
     <string name="mes_30s">30 seconds</string>
     <string name="mes_10s">10 seconds</string>
     <string name="mes_03s">3 seconds</string>
+    <string name="mes_auto">Auto</string>
     <string name="rectime_manual">Manual Recording</string>
     <string name="rectime_auto">Auto Recording</string>
     <string name="rectime_setup">Auto Recoding Interval</string>

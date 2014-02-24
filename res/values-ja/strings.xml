@@ -8,9 +8,12 @@
     <string name="status_message">測定機の接続待ち</string>
     <string name="data_label">測定値(uSv/h)</string>
     <string name="data_save">測定値記録</string>
+    <string name="mes_90s">測定時間90秒</string>
+    <string name="mes_60s">測定時間60秒</string>
     <string name="mes_30s">測定時間30秒</string>
     <string name="mes_10s">測定時間10秒</string>
     <string name="mes_03s">測定時間3秒</string>
+    <string name="mes_auto">測定時間自動</string>
     <string name="rectime_manual">手動記録</string>
     <string name="rectime_auto">自動記録</string>
     <string name="rectime_setup">自動記録時間</string>

@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.io.File;
 import java.io.FileWriter;
 import java.lang.Exception;
+import java.lang.Thread;
 import java.text.SimpleDateFormat;
 
 public class MainActivity extends Activity
@@ -72,28 +73,59 @@ public class MainActivity extends Activity
     private boolean mAutoRecord;
     private int mRectime;
 
+    private enum ModelType { TC300, TC100 }
+    private ModelType mModelMode=ModelType.TC300;
+
     private static final byte[] TCOM_MES30SEC = {'8','0','2'};
     private static final byte[] TCOM_MES10SEC = {'8','0','1'};
     private static final byte[] TCOM_MES03SEC = {'8','0','0'};
+    private static final byte[] TCOM_TC100_MES90SEC = {'8','0','5'};
+    private static final byte[] TCOM_TC100_MES60SEC = {'8','0','4'};
+    private static final byte[] TCOM_TC100_MES30SEC = {'8','0','3'};
+    private static final byte[] TCOM_TC100_MES10SEC = {'8','0','2'};
+    private static final byte[] TCOM_TC100_MES03SEC = {'8','0','1'};
+    private static final byte[] TCOM_TC100_MESAUTO = {'8','0','0'};
     private enum MeasurementTime {
-	MES30S(30, 5000, TCOM_MES30SEC),
-	MES10S(10, 5000, TCOM_MES10SEC),
-	MES03S(3, 3000, TCOM_MES03SEC);
+	MES90S(90, 5000),
+	MES60S(60, 5000),
+	MES30S(30, 5000),
+	MES10S(10, 5000),
+	MES03S(3, 3000),
+	MESAUTO(0, 3000);
 
 	private final int mes_interval; // seconds
 	private final int read_interval; // mili seconds
-	private final byte[] comstring;
-	MeasurementTime(int mes, int read, byte[] comstring) {
+	MeasurementTime(int mes, int read) {
 	    this.mes_interval=mes;
 	    this.read_interval=read;
-	    this.comstring=comstring;
 	}
     }
+    private byte[] get_comstring(MeasurementTime mestime, ModelType model)
+    {
+	switch(model){
+	case TC100:
+	    if(mestime.mes_interval==0) return TCOM_TC100_MESAUTO;
+	    if(mestime.mes_interval<=3) return TCOM_TC100_MES03SEC;
+	    if(mestime.mes_interval<=10) return TCOM_TC100_MES10SEC;
+	    if(mestime.mes_interval<=30) return TCOM_TC100_MES30SEC;
+	    if(mestime.mes_interval<=60) return TCOM_TC100_MES60SEC;
+	    return TCOM_TC100_MES90SEC;
+	case TC300:
+	default:
+	    if(mestime.mes_interval<=3) return TCOM_MES03SEC;
+	    if(mestime.mes_interval<=10) return TCOM_MES10SEC;
+	    return TCOM_MES30SEC;
+	}
+    }
+
     private MeasurementTime secToMeasurementTime(int sec)
     {
-	if(sec<=3) return MeasurementTime.MES03S;
-	if(sec<=10) return MeasurementTime.MES10S;
-	return MeasurementTime.MES30S;
+	    if(sec==0) return MeasurementTime.MESAUTO;
+	    if(sec<=3) return MeasurementTime.MES03S;
+	    if(sec<=10) return MeasurementTime.MES10S;
+	    if(sec<=30) return MeasurementTime.MES30S;
+	    if(sec<=60) return MeasurementTime.MES60S;
+	    return MeasurementTime.MES90S;
     }
     
     private final Handler mHandler = new Handler() {
@@ -117,7 +149,7 @@ public class MainActivity extends Activity
 			break;
 		    }
 		    try{
-			mDoseRate=readOneData()*0.001;
+			mDoseRate=readOneData(mModelMode)*0.001;
 		    } catch (IOException e) {
 			Log.d(TAG, "readOneData IOException\n");
 			close_driver();
@@ -182,6 +214,9 @@ public class MainActivity extends Activity
 		continue;
 	    }
 	    mDriver=drivers.get(0);
+	    if(device.getProductId()==UsbId.TECHNOAP_TC100S) {
+		mModelMode=ModelType.TC100;
+	    }
 	    if(init_driver() && setDeviceMesTime(mMesTime)){
 		mStatusMessage.setText(getString(R.string.dev_connected));
 		return;
@@ -362,10 +397,19 @@ public class MainActivity extends Activity
 
     private void setupMenuCheckbox()
     {
+	mMenu.findItem(R.id.mestime_90s).setChecked(false);
+	mMenu.findItem(R.id.mestime_60s).setChecked(false);
 	mMenu.findItem(R.id.mestime_30s).setChecked(false);
 	mMenu.findItem(R.id.mestime_10s).setChecked(false);
 	mMenu.findItem(R.id.mestime_03s).setChecked(false);
+	mMenu.findItem(R.id.mestime_auto).setChecked(false);
 	switch (mMesTime){
+	case MES90S:
+	    mMenu.findItem(R.id.mestime_90s).setChecked(true);
+	    break;
+	case MES60S:
+	    mMenu.findItem(R.id.mestime_60s).setChecked(true);
+	    break;
 	case MES30S:
 	    mMenu.findItem(R.id.mestime_30s).setChecked(true);
 	    break;
@@ -375,7 +419,16 @@ public class MainActivity extends Activity
 	case MES03S:
 	    mMenu.findItem(R.id.mestime_03s).setChecked(true);
 	    break;
+	case MESAUTO:
+	    mMenu.findItem(R.id.mestime_auto).setChecked(true);
+	    break;
 	}
+	if(mModelMode!=ModelType.TC100){
+	    mMenu.findItem(R.id.mestime_90s).setVisible(false);
+	    mMenu.findItem(R.id.mestime_60s).setVisible(false);
+	    mMenu.findItem(R.id.mestime_auto).setVisible(false);
+	}
+
 	if(mAutoRecord){
 	    mMenu.findItem(R.id.rectime_auto).setChecked(true);
 	    mMenu.findItem(R.id.rectime_manual).setChecked(false);
@@ -399,6 +452,12 @@ public class MainActivity extends Activity
     public boolean onOptionsItemSelected(MenuItem item) {
 	MeasurementTime mestime=mMesTime;
 	switch (item.getItemId()) {
+        case R.id.mestime_90s:
+	    mestime=MeasurementTime.MES90S;
+	    break;
+        case R.id.mestime_60s:
+	    mestime=MeasurementTime.MES60S;
+	    break;
         case R.id.mestime_30s:
 	    mestime=MeasurementTime.MES30S;
 	    break;
@@ -407,6 +466,9 @@ public class MainActivity extends Activity
 	    break;
         case R.id.mestime_03s:
 	    mestime=MeasurementTime.MES03S;
+	    break;
+        case R.id.mestime_auto:
+	    mestime=MeasurementTime.MESAUTO;
 	    break;
         case R.id.rectime_auto:
 	    setupRecordTimeDialog(mAutoRecord);
@@ -649,10 +711,12 @@ public class MainActivity extends Activity
 		Log.d(TAG, "can't send doserate command\n");
 		return false;
 	    }
-	    if(send_wait_ack(mMesTime.comstring)!=0){
+	    try {Thread.sleep(100);} catch(InterruptedException e){}
+	    if(send_wait_ack(get_comstring(mMesTime, mModelMode))!=0){
 		Log.d(TAG, "can't send measurement time parameter\n");
 		return false;
 	    }
+	    try {Thread.sleep(100);} catch(InterruptedException e){}
 	    return true;
 	} catch (IOException e) {
 	    Log.d(TAG, "IOException\n");
@@ -662,7 +726,7 @@ public class MainActivity extends Activity
     }
     
 
-    private int readOneData() throws IOException
+    private int readOneData(ModelType model) throws IOException
     {
 	byte[] rdata=null;
 	int doserate;
@@ -683,6 +747,7 @@ public class MainActivity extends Activity
 	    Log.d(TAG, "send_data 02 error\n");
 	    return 0;
 	}
+	if(model==ModelType.TC100) rec_data_tout();
 	Log.d(TAG, String.format("Dose Rate = %d\n",doserate));
 	return doserate;
     }

@@ -7,9 +7,12 @@
         android:title="@string/mestime_settings">
         <menu>
 	    <group android:id="@+id/mestime" android:checkableBehavior="single">
+      		<item android:id="@+id/mestime_90s" android:visible="true" android:title="@string/mes_90s" android:checked="true" android:enabled="true" android:checkable="true" android:titleCondensed="90sec"/>
+      		<item android:id="@+id/mestime_60s" android:visible="true" android:title="@string/mes_60s" android:checked="true" android:enabled="true" android:checkable="true" android:titleCondensed="60sec"/>
       		<item android:id="@+id/mestime_30s" android:visible="true" android:title="@string/mes_30s" android:checked="true" android:enabled="true" android:checkable="true" android:titleCondensed="30sec"/>
         	<item android:id="@+id/mestime_10s" android:title="@string/mes_10s" android:titleCondensed="10sec" android:visible="true" android:checked="false" android:enabled="true" android:checkable="true"/>
         	<item android:id="@+id/mestime_03s" android:title="@string/mes_03s" android:titleCondensed="10sec" android:visible="true" android:checked="false" android:enabled="true" android:checkable="true"/>
+      		<item android:id="@+id/mestime_auto" android:visible="true" android:title="@string/mes_auto" android:checked="true" android:enabled="true" android:checkable="true" android:titleCondensed="Auto"/>
             </group>
         </menu>
     	</item>
