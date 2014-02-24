@@ -168,7 +168,7 @@ class radi2gmap_cgifields():
             if salt: self.salt=salt
             if digest: self.digest=digest
             form = cgi.FieldStorage()
-            if 'password' in form:
+            if 'password' in form and form['password'].value!="":
                 self.passmatch = \
                     hashlib.sha256(form['password'].value+self.salt).hexdigest() == self.digest
             if 'datadir' in form: self.datadir = form['datadir'].value
