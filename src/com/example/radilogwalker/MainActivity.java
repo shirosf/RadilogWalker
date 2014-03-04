@@ -32,12 +32,12 @@ import com.hoho.android.usbserial.driver.UsbId;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Date;
+import java.util.Locale;
 import java.io.IOException;
 import java.io.File;
 import java.io.FileWriter;
 import java.lang.Exception;
 import java.lang.Thread;
-import java.lang.System;
 import java.text.SimpleDateFormat;
 
 public class MainActivity extends Activity
@@ -73,7 +73,9 @@ public class MainActivity extends Activity
     private String mDataFileName;
     private boolean mAutoRecord;
     private boolean mBackgroundMeasure;
-    private boolean mRunInBackground=false;
+    private enum RunningModeType { RM_NOT, RM_FG, RM_BG, RM_TBK }; 
+    private RunningModeType mRunningMode=RunningModeType.RM_NOT;
+    private static boolean mCreated = false;
     private int mRectime;
 
     private enum ModelType { TC300, TC100 }
@@ -140,8 +142,8 @@ public class MainActivity extends Activity
 		    if(!mDeviceInitialized) {
 			refreshDeviceList();
 			if(mDriver==null){
-			    if(mRunInBackground) {
-				// when running in background, the device is detached
+			    if(mRunningMode==RunningModeType.RM_BG) {
+				Log.d(TAG, "Lost the driver in Background mode\n");
 				finish();
 			    }
 			    mHandler.sendEmptyMessageDelayed(MESSAGE_REFRESH,
@@ -176,7 +178,7 @@ public class MainActivity extends Activity
 		    }
 		    mDataValueMessage.setText(String.format("%5.3f",mDoseRate));
 
-		    SimpleDateFormat sdf=new SimpleDateFormat("HH:mm:ss");
+		    SimpleDateFormat sdf=new SimpleDateFormat("HH:mm:ss", Locale.US);
 		    mStatusMessage.setText(String.format("%s - %s",
 							 getString(R.string.dev_updated),
 							 sdf.format(cdt)));
@@ -291,7 +293,7 @@ public class MainActivity extends Activity
 	    }
 	}
 
-	SimpleDateFormat sdf=new SimpleDateFormat(getString(R.string.datetime_format));
+	SimpleDateFormat sdf=new SimpleDateFormat(getString(R.string.datetime_format), Locale.US);
 	try{
 	    mRecordFileWriter.write(String.format("%f,%f,%f,%s,%s\n",
 		    mCurrentLatitude,mCurrentLongitude,
@@ -332,6 +334,14 @@ public class MainActivity extends Activity
     protected void onCreate(Bundle savedInstanceState)
     {
 	super.onCreate(savedInstanceState);
+	if(mCreated) {
+	    mRunningMode=RunningModeType.RM_TBK;
+	    finish();
+	    Log.d(TAG, "onCreate:TBK");
+	    return;
+	}
+	mCreated = true;
+
 	setContentView(R.layout.activity_main);
 
         mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
@@ -358,14 +368,25 @@ public class MainActivity extends Activity
 
     @Override
     protected void onDestroy() {
-	if(mRunInBackground) stopMeasurement();
+	if(mRunningMode==RunningModeType.RM_FG ||
+	   mRunningMode==RunningModeType.RM_BG ) stopMeasurement();
         super.onDestroy();
-	Log.d(TAG, "onDestroy");
+
+	if(mRunningMode==RunningModeType.RM_TBK){
+	    Log.d(TAG, "onDestroy:TBK");
+	}else{
+	    mCreated = false;
+	    Log.d(TAG, "onDestroy");
+	}
     }
     
     @Override
     protected void onStop() {
         super.onStop();
+	if(mRunningMode==RunningModeType.RM_TBK) {
+	    Log.d(TAG, "onStop:TBK");
+	    return;
+	}
 	
 	SharedPreferences settings = getPreferences(Context.MODE_PRIVATE);
 	SharedPreferences.Editor editor = settings.edit();
@@ -392,15 +413,18 @@ public class MainActivity extends Activity
     @Override
     protected void onResume() {
         super.onResume();
-
 	mStatusMessage = (TextView) findViewById(R.id.status_message);
 	mDataValueMessage = (TextView) findViewById(R.id.data_value);
 	mRecordButton = (Button) findViewById(R.id.save_data);
 
 	mWindow.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-	if(!mRunInBackground) startMeasurement();
-	mRunInBackground=false;
-	Log.d(TAG, "onResume");
+	if(mRunningMode==RunningModeType.RM_NOT) {
+	    startMeasurement();
+	    Log.d(TAG, "onResume:startMeasurement");
+	}else{
+	    Log.d(TAG, "onResume:already measuring");
+	}
+	mRunningMode=RunningModeType.RM_FG;
     }
 
     private void stopMeasurement() {
@@ -416,11 +440,16 @@ public class MainActivity extends Activity
     @Override
     protected void onPause() {
         super.onPause();
+	if(mRunningMode==RunningModeType.RM_TBK) {
+	    Log.d(TAG, "onPause:TBK");
+	    return;
+	}
 	mWindow.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 	if(mBackgroundMeasure) {
-	    mRunInBackground=true;
+	    mRunningMode=RunningModeType.RM_BG;
 	}else{
 	    stopMeasurement();
+	    mRunningMode=RunningModeType.RM_NOT;
 	}
 	Log.d(TAG, "onPause");
     }
