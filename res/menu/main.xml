@@ -36,5 +36,6 @@
         android:showAsAction="never"
         android:title="@string/recfile_settings">
     	</item>
+    	<item android:id="@+id/bgmeasure" android:checked="false" android:checkable="true" android:visible="true" android:title="@string/bg_run"></item>
     	
 </menu>

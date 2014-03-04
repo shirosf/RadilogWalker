@@ -33,5 +33,6 @@
     <string name="recfile_setup">記録ファイル設定</string>
     <string name="file_name">ファイル名</string>
     <string name="delete_record">記録データ削除</string>
+    <string name="bg_run">バックグラウンド測定</string>
     
 </resources>

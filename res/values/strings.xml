@@ -33,6 +33,6 @@
     <string name="recfile_setup">Record File Setup</string>
     <string name="file_name">Filename</string>
     <string name="delete_record">Discard Recorded Data</string>
-    
+    <string name="bg_run">Measure in Background</string>
     
 </resources>

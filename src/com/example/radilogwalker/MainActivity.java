@@ -37,6 +37,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.lang.Exception;
 import java.lang.Thread;
+import java.lang.System;
 import java.text.SimpleDateFormat;
 
 public class MainActivity extends Activity
@@ -71,6 +72,8 @@ public class MainActivity extends Activity
     private MeasurementTime mMesTime;
     private String mDataFileName;
     private boolean mAutoRecord;
+    private boolean mBackgroundMeasure;
+    private boolean mRunInBackground=false;
     private int mRectime;
 
     private enum ModelType { TC300, TC100 }
@@ -137,6 +140,10 @@ public class MainActivity extends Activity
 		    if(!mDeviceInitialized) {
 			refreshDeviceList();
 			if(mDriver==null){
+			    if(mRunInBackground) {
+				// when running in background, the device is detached
+				finish();
+			    }
 			    mHandler.sendEmptyMessageDelayed(MESSAGE_REFRESH,
 							     REFRESH_TIMEOUT_MILLIS);
 			    break;
@@ -328,10 +335,7 @@ public class MainActivity extends Activity
 	setContentView(R.layout.activity_main);
 
         mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
-	mStatusMessage = (TextView) findViewById(R.id.status_message);
 	mContext = getApplicationContext();
-	mDataValueMessage = (TextView) findViewById(R.id.data_value);
-	mRecordButton = (Button) findViewById(R.id.save_data);
 
 	mWindow = getWindow();
 
@@ -346,11 +350,19 @@ public class MainActivity extends Activity
 	mAutoRecord = settings.getBoolean("autorecord", false);
 	mDataFileName = settings.getString("datafilename",
 					   getString(R.string.default_recordfile));
-
+	mBackgroundMeasure = settings.getBoolean("bgmeasure", false);
 	initLocationManager();
+
 	Log.d(TAG, "onCreate");
     }
 
+    @Override
+    protected void onDestroy() {
+	if(mRunInBackground) stopMeasurement();
+        super.onDestroy();
+	Log.d(TAG, "onDestroy");
+    }
+    
     @Override
     protected void onStop() {
         super.onStop();
@@ -361,15 +373,13 @@ public class MainActivity extends Activity
 	editor.putInt("rectime", mRectime);
 	editor.putBoolean("autorecord", mAutoRecord);
 	editor.putString("datafilename", mDataFileName);
+	editor.putBoolean("bgmeasure", mBackgroundMeasure);
 	editor.commit();
 	Log.d(TAG, "onStop");
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        mHandler.sendEmptyMessage(MESSAGE_REFRESH);
-	mWindow.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+    private void startMeasurement() {
+	mHandler.sendEmptyMessage(MESSAGE_REFRESH);
 
 	// Register the listener with the Location Manager to receive location updates
 	if(!mLocationListenerUpdated){
@@ -377,20 +387,40 @@ public class MainActivity extends Activity
 						    3000, 0, mLocationListener);
 	    mLocationListenerUpdated=true;
 	}
+    }
+    
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+	mStatusMessage = (TextView) findViewById(R.id.status_message);
+	mDataValueMessage = (TextView) findViewById(R.id.data_value);
+	mRecordButton = (Button) findViewById(R.id.save_data);
+
+	mWindow.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+	if(!mRunInBackground) startMeasurement();
+	mRunInBackground=false;
 	Log.d(TAG, "onResume");
     }
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        mHandler.removeMessages(MESSAGE_REFRESH);
+    private void stopMeasurement() {
+	mHandler.removeMessages(MESSAGE_REFRESH);
 	mHandler.removeMessages(MESSAGE_READDATA);
-	mWindow.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-
 	// Remove the listener you previously added
 	if(mLocationListenerUpdated){
 	    mLocationManager.removeUpdates(mLocationListener);
 	    mLocationListenerUpdated=false;
+	}
+    }
+	
+    @Override
+    protected void onPause() {
+        super.onPause();
+	mWindow.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+	if(mBackgroundMeasure) {
+	    mRunInBackground=true;
+	}else{
+	    stopMeasurement();
 	}
 	Log.d(TAG, "onPause");
     }
@@ -436,6 +466,12 @@ public class MainActivity extends Activity
 	    mMenu.findItem(R.id.rectime_auto).setChecked(false);
 	    mMenu.findItem(R.id.rectime_manual).setChecked(true);
 	}
+
+	if(mBackgroundMeasure){
+	    mMenu.findItem(R.id.bgmeasure).setChecked(true);
+	}else{
+	    mMenu.findItem(R.id.bgmeasure).setChecked(false);
+	}
     }
 
     @Override
@@ -478,6 +514,15 @@ public class MainActivity extends Activity
 	    break;
 	case R.id.recfile_settings:
 	    setupRecordFileDialog();
+	    break;
+	case R.id.bgmeasure:
+	    if(mBackgroundMeasure){
+		mBackgroundMeasure=false;
+		item.setChecked(false);
+	    }else{
+		mBackgroundMeasure=true;
+		item.setChecked(true);
+	    }
 	    break;
 	}
 	if(mMesTime!=mestime){
